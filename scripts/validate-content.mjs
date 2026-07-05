@@ -5,8 +5,11 @@ const source = await readFile(path.join(process.cwd(), "data", "properties.ts"),
 const productSource = await readFile(path.join(process.cwd(), "lib", "product.ts"), "utf8");
 const runtimeContracts = await readFile(path.join(process.cwd(), "lib", "runtime-contracts.ts"), "utf8");
 const implementationSource = await readFile(path.join(process.cwd(), "lib", "implementation.ts"), "utf8");
+const runtimeStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
+await readFile(path.join(process.cwd(), "lib", "owner-notifications.ts"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "v0-implementation-brief.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "implementation-cockpit.md"), "utf8");
+await readFile(path.join(process.cwd(), "docs", "runtime-adapter.md"), "utf8");
 
 const requiredSnippets = [
   "properties",
@@ -46,7 +49,9 @@ const requiredRuntimeSnippets = [
   "blockedV1Actions",
   "createApprovalRecord",
   "createAgentRun",
-  "createListingDryRun"
+  "createListingDryRun",
+  "notificationMode",
+  "capabilities"
 ];
 
 const requiredImplementationSnippets = [
@@ -55,6 +60,16 @@ const requiredImplementationSnippets = [
   "partnerOffers",
   "blockedV1Actions",
   "runtimeMode"
+];
+
+const requiredRuntimeStoreSnippets = [
+  "runtimeSnapshot",
+  "persistInquiry",
+  "persistSupport",
+  "persistApproval",
+  "persistAgentRun",
+  "persistListingDryRun",
+  "postgres"
 ];
 
 for (const snippet of requiredRuntimeSnippets) {
@@ -66,6 +81,12 @@ for (const snippet of requiredRuntimeSnippets) {
 for (const snippet of requiredImplementationSnippets) {
   if (!implementationSource.includes(snippet)) {
     throw new Error(`lib/implementation.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredRuntimeStoreSnippets) {
+  if (!runtimeStoreSource.includes(snippet)) {
+    throw new Error(`lib/runtime-store.ts is missing ${snippet}`);
   }
 }
 

@@ -26,6 +26,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/owner`: owner dashboard
 - `/admin/setup`: owner setup checklist and missing-fact workflow
 - `/admin/implementation`: installation readiness, agent architecture, production gates, and partner offer ladder
+- `/admin/runtime`: runtime storage, notification, capability, and queue posture
 - `/admin/listings`: listing draft studio
 - `/admin/integrations`: approved/manual/planned integration cockpit
 - `/admin/agent-runs`: owner-reviewed agent run ledger
@@ -44,9 +45,14 @@ npm run smoke
 
 ## Data Model
 
-The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions are demo-mode only until a database adapter is wired. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues.
+The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions use a demo in-memory store by default and switch to the Postgres adapter when `DATABASE_URL` is configured. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues or notification workers.
 
 The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, and audit events.
+
+Runtime APIs:
+
+- `/api/runtime/health`: environment, adapter, notification, and capability posture
+- `/api/runtime/snapshot`: counts, recent demo queue items, audit posture, and production notes
 
 ## Implementation Cockpit
 
@@ -73,6 +79,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 
 - `docs/operator-runbook.md`
 - `docs/implementation-cockpit.md`
+- `docs/runtime-adapter.md`
 - `docs/portal-scene-brief.md`
 - `docs/product-roadmap.md`
 - `docs/production-hardening.md`

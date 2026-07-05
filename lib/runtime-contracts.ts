@@ -1,6 +1,8 @@
 import type { AgentRole, ApprovalRisk, ListingChannel } from "@/lib/types";
 
 export type RuntimeMode = "demo" | "database-ready";
+export type RuntimeNotificationMode = "not-configured" | "email-target-only" | "webhook-ready";
+export type RuntimeAdapterName = "demo-memory" | "postgres";
 
 export type RuntimeActorRole = "owner" | "operator" | "agent" | "renter" | "system";
 
@@ -21,8 +23,18 @@ export type AuditEventType =
 export type RuntimeHealth = {
   mode: RuntimeMode;
   tenantModel: "single-demo" | "multi-tenant-ready";
+  adapter: RuntimeAdapterName;
+  notificationMode: RuntimeNotificationMode;
   requiredEnv: string[];
+  optionalEnv: string[];
   missingEnv: string[];
+  capabilities: {
+    database: boolean;
+    ownerNotification: boolean;
+    auth: boolean;
+    mcpServer: boolean;
+    agentRuntime: boolean;
+  };
   blockedV1Actions: string[];
   ownerApprovalRequiredFor: string[];
 };
@@ -58,6 +70,7 @@ export type ListingDryRunPayload = {
 };
 
 const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL", "OWNER_NOTIFICATION_EMAIL"];
+const optionalRuntimeEnv = ["AUTH_PROVIDER", "OWNER_ADMIN_EMAIL", "MCP_SERVER_URL", "AGENT_RUNTIME_URL", "OWNER_NOTIFICATION_WEBHOOK_URL"];
 
 export const blockedV1Actions = [
   "publish listing",
@@ -82,14 +95,34 @@ export const ownerApprovalRequiredFor = [
 
 export function runtimeHealth(): RuntimeHealth {
   const missingEnv = requiredRuntimeEnv.filter((name) => !process.env[name]);
+  const notificationMode: RuntimeNotificationMode = process.env.OWNER_NOTIFICATION_WEBHOOK_URL
+    ? "webhook-ready"
+    : process.env.OWNER_NOTIFICATION_EMAIL
+      ? "email-target-only"
+      : "not-configured";
+
   return {
     mode: missingEnv.includes("DATABASE_URL") ? "demo" : "database-ready",
     tenantModel: missingEnv.includes("DATABASE_URL") ? "single-demo" : "multi-tenant-ready",
+    adapter: missingEnv.includes("DATABASE_URL") ? "demo-memory" : "postgres",
+    notificationMode,
     requiredEnv: requiredRuntimeEnv,
+    optionalEnv: optionalRuntimeEnv,
     missingEnv,
+    capabilities: {
+      database: Boolean(process.env.DATABASE_URL),
+      ownerNotification: notificationMode !== "not-configured",
+      auth: Boolean(process.env.AUTH_PROVIDER && process.env.OWNER_ADMIN_EMAIL),
+      mcpServer: Boolean(process.env.MCP_SERVER_URL),
+      agentRuntime: Boolean(process.env.AGENT_RUNTIME_URL)
+    },
     blockedV1Actions,
     ownerApprovalRequiredFor
   };
+}
+
+export function createRuntimeId(prefix: string) {
+  return `${prefix}-${Date.now()}-${globalThis.crypto.randomUUID().slice(0, 8)}`;
 }
 
 export function createApprovalRecord(input: {
@@ -99,7 +132,7 @@ export function createApprovalRecord(input: {
   ownerAction: string;
 }): ApprovalRecord {
   return {
-    id: `appr-${Date.now()}`,
+    id: createRuntimeId("appr"),
     kind: input.kind,
     sourceId: input.sourceId,
     route: input.route,
@@ -115,7 +148,7 @@ export function createAuditEvent(input: {
   summary: string;
 }): AuditEvent {
   return {
-    id: `audit-${Date.now()}`,
+    id: createRuntimeId("audit"),
     type: input.type,
     actorRole: input.actorRole ?? "system",
     summary: input.summary,
@@ -124,7 +157,7 @@ export function createAuditEvent(input: {
 }
 
 export function createAgentRun(input: AgentRunPayload) {
-  const id = `run-${Date.now()}`;
+  const id = createRuntimeId("run");
   const ownerApprovalRequired = input.approvalRisk !== "low";
   const ownerAction = ownerApprovalRequired
     ? "Review, edit, and approve before this output leaves the workspace."
@@ -147,7 +180,7 @@ export function createAgentRun(input: AgentRunPayload) {
 
 export function createListingDryRun(input: ListingDryRunPayload) {
   return {
-    id: `dryrun-${Date.now()}`,
+    id: createRuntimeId("dryrun"),
     mode: runtimeHealth().mode,
     ownerApprovalRequired: true,
     route: "owner-listing-publication-review",

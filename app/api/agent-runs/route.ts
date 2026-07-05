@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { notifyOwner } from "@/lib/owner-notifications";
+import { persistAgentRun } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
 import { createAgentRun } from "@/lib/runtime-contracts";
 import type { AgentRole, ApprovalRisk } from "@/lib/types";
@@ -32,5 +34,29 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing trigger or output" }, { status: 400 });
   }
 
-  return NextResponse.json(createAgentRun({ role, trigger, output, approvalRisk }));
+  const payload = { role, trigger, output, approvalRisk };
+  const result = createAgentRun(payload);
+  const persistence = await persistAgentRun({
+    id: result.id,
+    payload,
+    route: result.route,
+    ownerAction: result.ownerAction,
+    sanitizedSummary: result.sanitizedSummary,
+    ownerApprovalRequired: result.ownerApprovalRequired,
+    auditEvent: result.auditEvent
+  });
+  const ownerNotification = await notifyOwner({
+    sourceId: result.id,
+    kind: "agent-run",
+    urgency: result.ownerApprovalRequired ? "standard" : "weekly",
+    route: result.route,
+    sanitizedSummary: result.sanitizedSummary,
+    ownerAction: result.ownerAction
+  });
+
+  return NextResponse.json({
+    ...result,
+    persistence,
+    ownerNotification
+  });
 }

@@ -34,8 +34,8 @@ export const implementationLayers: ImplementationLayer[] = [
     title: "Secure runtime data layer",
     status: runtimeHealth().mode === "database-ready" ? "configure" : "planned",
     ownerValue: "Real inquiries, support tickets, approvals, and agent runs can be stored without leaking private data into GitHub.",
-    implementerAction: "Apply db/schema.sql to Postgres, add auth, retention, backups, and row-level access rules.",
-    evidence: ["db/schema.sql", "/api/runtime/health", "runtime contracts"],
+    implementerAction: "Apply db/schema.sql to Postgres, seed organization/property records, add auth, retention, backups, and row-level access rules.",
+    evidence: ["db/schema.sql", "/api/runtime/health", "/api/runtime/snapshot", "/admin/runtime"],
     productionGate: "DATABASE_URL, auth policy, audit retention, and deletion workflow are verified in the target environment."
   },
   {
@@ -59,10 +59,10 @@ export const implementationLayers: ImplementationLayer[] = [
   {
     id: "notifications",
     title: "Owner notification loop",
-    status: process.env.OWNER_NOTIFICATION_EMAIL ? "configure" : "planned",
+    status: runtimeHealth().capabilities.ownerNotification ? "configure" : "planned",
     ownerValue: "Urgent issues and approval requests reach the owner without exposing sensitive details in public tools.",
-    implementerAction: "Wire email or WhatsApp notifications after storage exists; keep renter-facing messages owner-approved.",
-    evidence: ["OWNER_NOTIFICATION_EMAIL", "support classification", "approval records"],
+    implementerAction: "Wire OWNER_NOTIFICATION_WEBHOOK_URL to email, WhatsApp, n8n, Make, or a Railway worker after storage exists.",
+    evidence: ["OWNER_NOTIFICATION_EMAIL", "OWNER_NOTIFICATION_WEBHOOK_URL", "support classification", "approval records"],
     productionGate: "Notification templates are reviewed for privacy and do not include access secrets or private renter records."
   },
   {
@@ -128,6 +128,8 @@ export function implementationReadiness() {
     integrationReady,
     integrationTotal: integrations.length,
     missingEnv: health.missingEnv,
+    optionalEnv: health.optionalEnv,
+    capabilities: health.capabilities,
     ownerApprovalRequiredFor,
     blockedV1Actions: health.blockedV1Actions,
     layers: implementationLayers,

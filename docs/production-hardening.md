@@ -4,6 +4,8 @@
 
 - Use authenticated owner/admin routes before real data.
 - Store inquiries, support tickets, approvals, and agent runs in a tenant-scoped database.
+- Use `/admin/runtime` to verify adapter, notification, capability, queue, and audit posture.
+- Keep `OWNER_NOTIFICATION_WEBHOOK_URL` payloads sanitized and route full private details only through runtime storage.
 - Keep access codes, private addresses, lease details, IDs, bank data, and payment records out of public content.
 - Sanitize all form input and send only sanitized summaries to GitHub or external tools.
 - Record audit events for approval changes, agent drafts, support triage, and listing publication attempts.
@@ -21,6 +23,7 @@
 ## Reliability
 
 - Forms must return a route and owner action.
+- Forms must return persistence and owner-notification receipts.
 - Urgent support must not depend on generative output.
 - Failed runtime writes should show owner-visible failure state.
 - Integrations must ship with dry-run mode before live writes.
@@ -40,9 +43,11 @@
 Before production:
 
 1. Wire runtime database.
-2. Add auth and roles.
-3. Replace sample content and media.
-4. Run validation, privacy, typecheck, build, smoke, and visual QA.
-5. Verify Vercel preview.
-6. Review owner approval routes.
-7. Record residual risks.
+2. Seed `organizations` and `properties` for `PROPERTY_OS_ORG_ID`.
+3. Add auth and roles.
+4. Wire sanitized owner notification webhook or worker.
+5. Replace sample content and media.
+6. Run validation, privacy, typecheck, build, smoke, and visual QA.
+7. Verify Vercel preview.
+8. Review owner approval routes.
+9. Record residual risks.

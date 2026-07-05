@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { notifyOwner } from "@/lib/owner-notifications";
+import { persistApproval } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
 import { createApprovalRecord, createAuditEvent } from "@/lib/runtime-contracts";
 import type { ApprovalKind } from "@/lib/runtime-contracts";
@@ -34,10 +36,21 @@ export async function POST(request: Request) {
     actorRole: "agent",
     summary: `${kind} approval requested for ${sourceId}`
   });
+  const persistence = await persistApproval({ approval, auditEvent });
+  const ownerNotification = await notifyOwner({
+    sourceId: approval.id,
+    kind: "approval",
+    urgency: "standard",
+    route,
+    sanitizedSummary: `${kind} approval requested for ${sourceId}.`,
+    ownerAction
+  });
 
   return NextResponse.json({
     ...approval,
     ownerApprovalRequired: true,
-    auditEventId: auditEvent.id
+    auditEventId: auditEvent.id,
+    persistence,
+    ownerNotification
   });
 }

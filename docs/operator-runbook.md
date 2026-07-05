@@ -31,9 +31,10 @@ Show the owner:
 - renter portal
 - support page
 - owner dashboard
+- runtime control page
 - listing draft admin
 - ops page
 
 ## Production Rule
 
-Use a Vercel preview before production when the project is connected to Vercel. Production requires owner approval for copy, media, availability language, and urgent support language.
+Use a Vercel preview before production when the project is connected to Vercel. Production requires owner approval for copy, media, availability language, urgent support language, runtime storage, notification routing, and support ownership.

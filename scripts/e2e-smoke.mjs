@@ -16,6 +16,7 @@ const routes = [
   "/owner",
   "/admin/setup",
   "/admin/implementation",
+  "/admin/runtime",
   "/admin/listings",
   "/admin/integrations",
   "/admin/agent-runs",
@@ -98,6 +99,10 @@ async function postJson(path, body) {
     throw new Error(`${path} did not return route and ownerAction`);
   }
 
+  if (!payload.persistence?.status || !payload.ownerNotification?.status) {
+    throw new Error(`${path} did not return persistence and owner notification receipts`);
+  }
+
   return payload;
 }
 
@@ -129,6 +134,18 @@ async function expectImplementationReadiness() {
   }
 }
 
+async function expectRuntimeSnapshot() {
+  const response = await fetch(`${baseUrl}/api/runtime/snapshot`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`/api/runtime/snapshot returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (!payload.health?.adapter || !payload.counts || !Array.isArray(payload.productionNotes)) {
+    throw new Error("/api/runtime/snapshot did not expose health, counts, and production notes");
+  }
+}
+
 try {
   await waitForServer();
 
@@ -138,6 +155,7 @@ try {
 
   await expectRuntimeHealth();
   await expectImplementationReadiness();
+  await expectRuntimeSnapshot();
 
   await postJson("/api/inquiries", {
     propertySlug: "urban-haven-sample",
@@ -179,6 +197,10 @@ try {
 
   if (!approval.ok) {
     throw new Error(`/api/approvals returned ${approval.status}`);
+  }
+  const approvalPayload = await approval.json();
+  if (!approvalPayload.persistence?.status || !approvalPayload.ownerNotification?.status) {
+    throw new Error("/api/approvals did not return persistence and owner notification receipts");
   }
 
   console.log(`Smoke passed at ${baseUrl}`);

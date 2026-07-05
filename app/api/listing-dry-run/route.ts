@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { notifyOwner } from "@/lib/owner-notifications";
+import { persistListingDryRun } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
 import { listingDrafts } from "@/data/properties";
 import { createListingDryRun } from "@/lib/runtime-contracts";
@@ -29,8 +31,27 @@ export async function POST(request: Request) {
   }
 
   const result = createListingDryRun({ propertySlug, channel });
+  const persistence = await persistListingDryRun({
+    id: result.id,
+    payload: { propertySlug, channel },
+    route: result.route,
+    ownerAction: result.ownerAction,
+    sanitizedSummary: result.sanitizedSummary,
+    auditEvent: result.auditEvent
+  });
+  const ownerNotification = await notifyOwner({
+    sourceId: result.id,
+    kind: "listing-dry-run",
+    urgency: "standard",
+    route: result.route,
+    sanitizedSummary: result.sanitizedSummary,
+    ownerAction: result.ownerAction
+  });
+
   return NextResponse.json({
     ...result,
+    persistence,
+    ownerNotification,
     publicationMode: draft.publicationMode,
     missingFacts: draft.missingFacts,
     payload: {
