@@ -30,10 +30,10 @@ export function SupportForm() {
       return;
     }
 
-    const result = await response.json() as { id: string; ownerApprovalRequired: boolean };
+    const result = await response.json() as { id: string; ownerApprovalRequired: boolean; route: string; ownerAction: string };
     setState({
       status: "done",
-      message: `Support item ${result.id} is ready for owner triage. Owner approval required: ${result.ownerApprovalRequired ? "yes" : "yes"}`
+      message: `Support item ${result.id} is routed to ${result.route}. ${result.ownerAction}`
     });
     event.currentTarget.reset();
   }
@@ -75,4 +75,3 @@ export function SupportForm() {
     </form>
   );
 }
-

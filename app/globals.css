@@ -235,6 +235,23 @@ select {
   padding: 48px 0;
 }
 
+.work-header {
+  display: grid;
+  gap: 14px;
+  padding: clamp(32px, 5vw, 72px) 0 28px;
+}
+
+.work-header .page-title {
+  max-width: 980px;
+  font-size: clamp(36px, 5vw, 64px);
+  line-height: 1;
+}
+
+.work-header .lede {
+  max-width: 760px;
+  font-size: clamp(16px, 1.6vw, 19px);
+}
+
 .section h2 {
   margin: 0 0 16px;
   font-size: clamp(28px, 4vw, 48px);
@@ -263,6 +280,15 @@ select {
   gap: 14px;
 }
 
+.mini-stack {
+  display: grid;
+  gap: 6px;
+}
+
+.mini-stack p {
+  margin: 0;
+}
+
 .row {
   display: flex;
   align-items: center;
@@ -287,6 +313,12 @@ select {
   border-color: rgba(245, 158, 11, 0.4);
   color: #ffe5ad;
   background: rgba(245, 158, 11, 0.12);
+}
+
+.status-danger {
+  border-color: rgba(249, 115, 115, 0.45);
+  color: #ffd0d0;
+  background: rgba(249, 115, 115, 0.12);
 }
 
 .form-grid {
@@ -339,10 +371,26 @@ select {
   .nav {
     align-items: flex-start;
     flex-direction: column;
+    gap: 12px;
   }
 
   .nav-links {
     width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-links a {
+    flex: 0 0 auto;
+    min-height: 36px;
+    white-space: nowrap;
   }
 
   .hero,
@@ -381,8 +429,12 @@ select {
   .page {
     width: 100%;
     max-width: 100vw;
-    padding: 28px 18px;
+    padding: 18px;
     overflow-x: hidden;
+  }
+
+  .nav {
+    padding-bottom: 12px;
   }
 
   .shell,
@@ -401,15 +453,11 @@ select {
   }
 
   .nav-links {
-    display: grid;
-    grid-template-columns: 1fr;
     width: 100%;
-    max-width: 300px;
   }
 
   .nav-links a {
-    width: 100%;
-    max-width: 100%;
+    padding: 0 12px;
   }
 
   .shell,
@@ -426,23 +474,27 @@ select {
   .hero-actions,
   .lede {
     width: 100%;
-    max-width: 300px;
+    max-width: 100%;
   }
 
   .hero h1,
   .page-title {
     width: 100%;
     max-width: 100%;
-    font-size: 34px;
+    font-size: 32px;
     line-height: 1;
     word-break: normal;
     overflow-wrap: anywhere;
   }
 
+  .hero h1 {
+    max-width: 12ch;
+  }
+
   .lede {
     width: 100%;
-    max-width: 100%;
-    font-size: 17px;
+    max-width: 34ch;
+    font-size: 16px;
     overflow-wrap: anywhere;
   }
 

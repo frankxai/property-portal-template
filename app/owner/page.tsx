@@ -9,7 +9,7 @@ export default function OwnerPage() {
   return (
     <main className="page">
       <div className="shell">
-        <section className="section stack">
+        <section className="work-header">
           <span className="eyebrow">Owner dashboard</span>
           <h1 className="page-title">One place for listings, renter knowledge, support risk, and weekly decisions.</h1>
         </section>
@@ -42,10 +42,11 @@ export default function OwnerPage() {
             <h3>Weekly decisions</h3>
             <p className="muted">Confirm public facts, approve listing copy, review missing renter FAQ answers, and resolve maintenance commitments.</p>
             <Link className="button" href="/admin/listings">Review listings</Link>
+            <Link className="button-secondary" href="/admin/setup">Open setup checklist</Link>
+            <Link className="button-secondary" href="/admin/agent-runs">Review agent ledger</Link>
           </div>
         </section>
       </div>
     </main>
   );
 }
-

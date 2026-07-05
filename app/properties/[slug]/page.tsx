@@ -42,6 +42,12 @@ export default async function PropertyPage({ params }: { params: Promise<{ slug:
               </ul>
             </div>
             <div>
+              <span className="label">Premium signals</span>
+              <ul>
+                {property.premiumSignals.map((item) => <li key={item}>{item}</li>)}
+              </ul>
+            </div>
+            <div>
               <span className="label">Rules</span>
               <ul>
                 {property.rules.map((item) => <li key={item}>{item}</li>)}
@@ -54,4 +60,3 @@ export default async function PropertyPage({ params }: { params: Promise<{ slug:
     </main>
   );
 }
-

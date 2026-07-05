@@ -2,7 +2,27 @@ export type ApprovalStatus = "draft" | "owner-review" | "approved" | "published"
 
 export type AvailabilityStatus = "available" | "reserved" | "occupied" | "maintenance" | "unknown";
 
-export type ListingChannel = "own-website" | "kleinanzeigen" | "immoscout24" | "immowelt";
+export type ListingChannel =
+  | "own-website"
+  | "kleinanzeigen"
+  | "immoscout24"
+  | "immowelt"
+  | "airbnb"
+  | "booking"
+  | "vrbo";
+
+export type IntegrationStatus = "manual" | "planned" | "connected" | "blocked" | "later";
+
+export type ApprovalRisk = "low" | "medium" | "high" | "owner-required";
+
+export type AgentRole =
+  | "property-steward"
+  | "listing-ops"
+  | "inquiry-concierge"
+  | "renter-guide"
+  | "maintenance-triage"
+  | "vacancy-pipeline"
+  | "compliance-reviewer";
 
 export type PropertyProfile = {
   id: string;
@@ -21,6 +41,8 @@ export type PropertyProfile = {
   amenities: string[];
   rules: string[];
   neighborhood: string[];
+  ownerChecklist: string[];
+  premiumSignals: string[];
   units: Unit[];
   faq: KnowledgeArticle[];
 };
@@ -50,6 +72,8 @@ export type ListingDraft = {
   headline: string;
   body: string;
   ownerChecklist: string[];
+  missingFacts: string[];
+  publicationMode: "manual-copy" | "api-planned" | "api-connected";
 };
 
 export type StaySession = {
@@ -75,3 +99,29 @@ export type SupportPayload = {
   message: string;
 };
 
+export type IntegrationRecord = {
+  id: string;
+  label: string;
+  category: "listing" | "messaging" | "calendar" | "payments" | "documents" | "database" | "agent";
+  status: IntegrationStatus;
+  purpose: string;
+  ownerValue: string;
+  risk: string;
+  nextStep: string;
+};
+
+export type AgentRun = {
+  id: string;
+  role: AgentRole;
+  trigger: string;
+  output: string;
+  approvalRisk: ApprovalRisk;
+  ownerAction: string;
+};
+
+export type SetupStep = {
+  id: string;
+  title: string;
+  status: "ready" | "needs-owner" | "recommended" | "later";
+  outcome: string;
+};

@@ -13,7 +13,7 @@ export default function OpsPage() {
   return (
     <main className="page">
       <div className="shell">
-        <section className="section stack">
+        <section className="work-header">
           <span className="eyebrow">Operating system</span>
           <h1 className="page-title">Run the property like a premium front desk, with owner approval at the center.</h1>
           <p className="lede">

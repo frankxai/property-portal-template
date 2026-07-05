@@ -20,6 +20,18 @@ export const properties: PropertyProfile[] = [
     amenities: ["Bright living area", "Kitchen basics", "Work-ready table", "Good transit access", "Quiet residential setting"],
     rules: ["Quiet hours follow house rules", "Smoking policy requires owner confirmation", "Pets policy requires owner confirmation"],
     neighborhood: ["Local shops within normal city reach", "Public transport access to be confirmed", "Harz region context for longer stays"],
+    ownerChecklist: [
+      "Replace sample photography with owned property media",
+      "Confirm rent, utilities, deposit, and minimum rental period",
+      "Confirm whether exact address is public or shown after qualification",
+      "Approve emergency, maintenance, and access escalation paths"
+    ],
+    premiumSignals: [
+      "Clear property facts before inquiry",
+      "Renter self-service portal for repeated questions",
+      "Owner-reviewed listing copy per channel",
+      "No hidden automation for sensitive decisions"
+    ],
     units: [
       {
         id: "sample-unit",
@@ -66,7 +78,9 @@ export const listingDrafts: ListingDraft[] = [
     headline: "Urban Haven Sample - calm rental home in the Harz region",
     body:
       "A public-safe sample listing for the owner website. Replace with approved property photography, verified amenities, confirmed rent, and owner-approved availability before publication.",
-    ownerChecklist: ["Confirm rent", "Confirm availability", "Approve photos", "Confirm house rules", "Review exact address policy"]
+    ownerChecklist: ["Confirm rent", "Confirm availability", "Approve photos", "Confirm house rules", "Review exact address policy"],
+    missingFacts: ["rent", "availability", "owned photography", "exact address publication policy"],
+    publicationMode: "manual-copy"
   },
   {
     id: "kleinanzeigen-sample",
@@ -76,7 +90,9 @@ export const listingDrafts: ListingDraft[] = [
     headline: "Helle Beispielwohnung - Angaben in Pruefung",
     body:
       "Dies ist ein Entwurf fuer Kleinanzeigen. Preis, Verfuegbarkeit, Nebenkosten, Kaution und genaue Adresse muessen vor Veroeffentlichung vom Eigentuemer freigegeben werden.",
-    ownerChecklist: ["Miete bestaetigen", "Zeitraum bestaetigen", "Nebenkosten klaeren", "Kaution klaeren", "Kontaktweg bestaetigen"]
+    ownerChecklist: ["Miete bestaetigen", "Zeitraum bestaetigen", "Nebenkosten klaeren", "Kaution klaeren", "Kontaktweg bestaetigen"],
+    missingFacts: ["Kaltmiete", "Nebenkosten", "Kaution", "Bezugsdatum", "Kontaktweg"],
+    publicationMode: "manual-copy"
   },
   {
     id: "immoscout24-sample",
@@ -86,7 +102,9 @@ export const listingDrafts: ListingDraft[] = [
     headline: "Ruhige Beispielwohnung mit klarer Mieterinformation",
     body:
       "Ein ImmoScout24-Entwurf auf Basis freigegebener Fakten. Vor Veroeffentlichung sind Energieausweis, Preis, Adresse, Verfuegbarkeit und Vertragsdetails zu pruefen.",
-    ownerChecklist: ["Energieangaben pruefen", "Mietpreis bestaetigen", "Vertragsdetails pruefen", "Fotos freigeben"]
+    ownerChecklist: ["Energieangaben pruefen", "Mietpreis bestaetigen", "Vertragsdetails pruefen", "Fotos freigeben"],
+    missingFacts: ["Energieausweis", "Mietpreis", "Wohnflaeche", "Adresse", "Vertragsdetails"],
+    publicationMode: "api-planned"
   },
   {
     id: "immowelt-sample",
@@ -96,7 +114,9 @@ export const listingDrafts: ListingDraft[] = [
     headline: "Beispielobjekt fuer manuelle Immowelt-Veroeffentlichung",
     body:
       "Dieser Text ist ein sicherer Entwurf. Er ersetzt keine rechtliche oder portalbezogene Pruefung und darf erst nach Eigentuemerfreigabe genutzt werden.",
-    ownerChecklist: ["Pflichtangaben pruefen", "Bilder freigeben", "Kontakt und Besichtigung klaeren"]
+    ownerChecklist: ["Pflichtangaben pruefen", "Bilder freigeben", "Kontakt und Besichtigung klaeren"],
+    missingFacts: ["Pflichtangaben", "Bilderrechte", "Besichtigungstermine", "Kontaktweg"],
+    publicationMode: "api-planned"
   }
 ];
 
@@ -139,4 +159,3 @@ export function getProperty(slug: string) {
 export function getStaySession(accessCode: string) {
   return staySessions.find((session) => session.accessCode === accessCode);
 }
-

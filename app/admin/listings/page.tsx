@@ -5,7 +5,7 @@ export default function ListingsAdminPage() {
   return (
     <main className="page">
       <div className="shell">
-        <section className="section stack">
+        <section className="work-header">
           <span className="eyebrow">Listing draft studio</span>
           <h1 className="page-title">Channel-ready drafts, still under owner control.</h1>
           <p className="lede">
@@ -25,6 +25,16 @@ export default function ListingsAdminPage() {
               </div>
               <p className="muted">{draft.body}</p>
               <div>
+                <span className="label">Publication mode</span>
+                <p>{draft.publicationMode}</p>
+              </div>
+              <div>
+                <span className="label">Missing facts</span>
+                <ul>
+                  {draft.missingFacts.map((item) => <li key={item}>{item}</li>)}
+                </ul>
+              </div>
+              <div>
                 <span className="label">Owner checklist</span>
                 <ul>
                   {draft.ownerChecklist.map((item) => <li key={item}>{item}</li>)}
@@ -37,4 +47,3 @@ export default function ListingsAdminPage() {
     </main>
   );
 }
-

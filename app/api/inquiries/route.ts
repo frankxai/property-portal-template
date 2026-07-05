@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { isSensitiveTopic, sanitizeText } from "@/lib/sanitize";
+import { sanitizeText } from "@/lib/sanitize";
 import { recordInquiry } from "@/lib/runtime";
 import type { InquiryPayload } from "@/lib/types";
 
@@ -17,8 +17,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const ownerApprovalRequired = true || isSensitiveTopic(payload.message);
+  const ownerApprovalRequired = true;
   const result = await recordInquiry(payload, ownerApprovalRequired);
   return NextResponse.json(result);
 }
-

@@ -10,7 +10,10 @@ Vercel/Next.js template for a premium rental-property website, renter self-servi
 - `/stay/[accessCode]`: renter self-service portal
 - `/support`: support and maintenance intake
 - `/owner`: owner dashboard
+- `/admin/setup`: owner setup checklist and missing-fact workflow
 - `/admin/listings`: listing draft studio
+- `/admin/integrations`: approved/manual/planned integration cockpit
+- `/admin/agent-runs`: owner-reviewed agent run ledger
 - `/admin/ops`: operating cadence, success criteria, and release gates
 
 ## Setup
@@ -18,6 +21,7 @@ Vercel/Next.js template for a premium rental-property website, renter self-servi
 ```bash
 npm install
 npm run validate
+npm run agent:dry-run
 npm run typecheck
 npm run build
 npm run smoke
@@ -26,6 +30,8 @@ npm run smoke
 ## Data Model
 
 The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions are demo-mode only until a database adapter is wired. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues.
+
+The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, and audit events.
 
 ## V1 Safety
 
@@ -41,6 +47,10 @@ Deploy as a normal Next.js project. Use preview deployments for owner review bef
 ## Operating Docs
 
 - `docs/operator-runbook.md`
+- `docs/portal-scene-brief.md`
+- `docs/product-roadmap.md`
+- `docs/production-hardening.md`
+- `docs/v0-implementation-brief.md`
 - `docs/success-criteria.md`
 - `docs/taste-standard.md`
 - `docs/release-gate.md`

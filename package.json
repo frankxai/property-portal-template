@@ -8,8 +8,9 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs",
+    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs",
     "privacy": "node scripts/privacy-scan.mjs",
+    "agent:dry-run": "node --experimental-strip-types scripts/agent-dry-run.mjs",
     "smoke": "node scripts/e2e-smoke.mjs"
   },
   "dependencies": {

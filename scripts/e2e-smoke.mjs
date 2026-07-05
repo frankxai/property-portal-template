@@ -14,7 +14,10 @@ const routes = [
   "/stay/sample-stay",
   "/support",
   "/owner",
+  "/admin/setup",
   "/admin/listings",
+  "/admin/integrations",
+  "/admin/agent-runs",
   "/admin/ops"
 ];
 
@@ -89,6 +92,24 @@ async function postJson(path, body) {
   if (!payload.ownerApprovalRequired || !payload.sanitizedSummary) {
     throw new Error(`${path} did not return the expected owner approval payload`);
   }
+
+  if (!payload.route || !payload.ownerAction) {
+    throw new Error(`${path} did not return route and ownerAction`);
+  }
+
+  return payload;
+}
+
+async function expectRuntimeHealth() {
+  const response = await fetch(`${baseUrl}/api/runtime/health`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`/api/runtime/health returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (!payload.mode || !payload.blockedV1Actions?.includes("publish listing")) {
+    throw new Error("/api/runtime/health did not expose runtime mode and blocked actions");
+  }
 }
 
 try {
@@ -97,6 +118,8 @@ try {
   for (const route of routes) {
     await expectOk(route);
   }
+
+  await expectRuntimeHealth();
 
   await postJson("/api/inquiries", {
     propertySlug: "urban-haven-sample",
@@ -112,6 +135,33 @@ try {
     urgency: "standard",
     message: "Sample support request for smoke testing."
   });
+
+  await postJson("/api/agent-runs", {
+    role: "listing-ops",
+    trigger: "Smoke test agent run",
+    output: "Drafted listing copy for owner review.",
+    approvalRisk: "owner-required"
+  });
+
+  await postJson("/api/listing-dry-run", {
+    propertySlug: "urban-haven-sample",
+    channel: "immoscout24"
+  });
+
+  const approval = await fetch(`${baseUrl}/api/approvals`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      kind: "integration-dry-run",
+      sourceId: "smoke-dry-run",
+      route: "owner-listing-publication-review",
+      ownerAction: "Approve dry-run payload before live publication."
+    })
+  });
+
+  if (!approval.ok) {
+    throw new Error(`/api/approvals returned ${approval.status}`);
+  }
 
   console.log(`Smoke passed at ${baseUrl}`);
 } finally {

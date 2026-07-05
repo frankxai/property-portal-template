@@ -31,10 +31,10 @@ export function InquiryForm({ propertySlug }: { propertySlug: string }) {
       return;
     }
 
-    const result = await response.json() as { id: string; ownerApprovalRequired: boolean };
+    const result = await response.json() as { id: string; ownerApprovalRequired: boolean; route: string };
     setState({
       status: "done",
-      message: `Inquiry ${result.id} is ready for owner review. Owner approval required: ${result.ownerApprovalRequired ? "yes" : "yes"}`
+      message: `Inquiry ${result.id} is routed to ${result.route}. Owner approval required.`
     });
     event.currentTarget.reset();
   }
@@ -64,4 +64,3 @@ export function InquiryForm({ propertySlug }: { propertySlug: string }) {
     </form>
   );
 }
-
