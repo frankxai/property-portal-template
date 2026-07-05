@@ -12,10 +12,10 @@
 
 ## Readiness API
 
-Use:
+Use an owner session or trusted automation token:
 
 ```bash
-curl /api/implementation/readiness
+curl -H "Authorization: Bearer $OWNER_PORTAL_API_TOKEN" /api/implementation/readiness
 ```
 
 The response includes:
@@ -33,7 +33,7 @@ An implementation partner should not sell the public template as production-read
 
 1. approved property facts, media rights, and public address policy
 2. Vercel preview verification on desktop and mobile
-3. secure database, auth, backups, and retention policy
+3. secure database, owner auth, backups, RLS smoke evidence, and retention policy
 4. owner notification route for urgent and approval-required items
 5. private client workspace for sensitive property/renter operations
 6. Codex/Claude/MCP setup with approved-facts-only boundaries
@@ -50,4 +50,4 @@ The free template creates trust. Paid work should sell speed, judgment, privacy,
 
 ## Production Exit Criteria
 
-The cockpit can show a high readiness score before the install is legally or operationally production-ready. Production exit still requires owner approval, private-data review, auth review, database checks, visual QA, and a Vercel preview.
+The cockpit can show a high readiness score before the install is legally or operationally production-ready. Production exit still requires owner approval, private-data review, auth review, database checks including `npm run db:rls:smoke`, visual QA, and a Vercel preview.

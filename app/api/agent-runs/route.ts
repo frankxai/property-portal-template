@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireOwnerApiAccess } from "@/lib/auth";
 import { notifyOwner } from "@/lib/owner-notifications";
 import { persistAgentRun } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
@@ -18,6 +19,9 @@ const roles: AgentRole[] = [
 const risks: ApprovalRisk[] = ["low", "medium", "high", "owner-required"];
 
 export async function POST(request: Request) {
+  const denied = await requireOwnerApiAccess(request);
+  if (denied) return denied;
+
   const input = await request.json() as Partial<{
     role: AgentRole;
     trigger: string;

@@ -33,6 +33,8 @@ Deploy a polished property website, renter self-service portal, inquiry/support 
 
 - replace sample property data with approved owner facts
 - wire database/auth/email/storage
+- configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
+- run `npm run db:rls:smoke` against the target database
 - configure owner notification
 - add privacy policy and local legal review
 - run preview QA on real photos and mobile

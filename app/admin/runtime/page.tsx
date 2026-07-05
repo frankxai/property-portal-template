@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 import { runtimeSnapshot } from "@/lib/runtime-store";
 
 export default async function RuntimePage() {
+  await requireOwnerAccess("/admin/runtime");
   const snapshot = await runtimeSnapshot();
   const { health } = snapshot;
 

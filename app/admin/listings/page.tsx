@@ -1,7 +1,10 @@
 import { listingDrafts } from "@/data/properties";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 
-export default function ListingsAdminPage() {
+export default async function ListingsAdminPage() {
+  await requireOwnerAccess("/admin/listings");
+
   return (
     <main className="page">
       <div className="shell">

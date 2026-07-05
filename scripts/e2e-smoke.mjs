@@ -13,6 +13,7 @@ const routes = [
   "/properties/urban-haven-sample/inquire",
   "/stay/sample-stay",
   "/support",
+  "/admin/sign-in",
   "/owner",
   "/admin/setup",
   "/admin/implementation",
@@ -25,7 +26,7 @@ const routes = [
 
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
   cwd: process.cwd(),
-  env: { ...process.env, PORT: String(port) },
+  env: { ...process.env, PORT: String(port), PROPERTY_OS_DEMO_AUTH: "true" },
   stdio: ["ignore", "pipe", "pipe"]
 });
 

@@ -1,5 +1,6 @@
 import { sampleAgentRuns } from "@/lib/product";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 
 const toneByRisk = {
   low: undefined,
@@ -8,7 +9,9 @@ const toneByRisk = {
   "owner-required": "warning"
 } as const;
 
-export default function AgentRunsPage() {
+export default async function AgentRunsPage() {
+  await requireOwnerAccess("/admin/agent-runs");
+
   return (
     <main className="page">
       <div className="shell">

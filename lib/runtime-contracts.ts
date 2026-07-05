@@ -70,7 +70,16 @@ export type ListingDryRunPayload = {
 };
 
 const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL", "OWNER_NOTIFICATION_EMAIL"];
-const optionalRuntimeEnv = ["AUTH_PROVIDER", "OWNER_ADMIN_EMAIL", "MCP_SERVER_URL", "AGENT_RUNTIME_URL", "OWNER_NOTIFICATION_WEBHOOK_URL"];
+const requiredProductionEnv = ["OWNER_PORTAL_SECRET", "OWNER_PORTAL_PASSCODE_HASH"];
+const optionalRuntimeEnv = [
+  "AUTH_PROVIDER",
+  "OWNER_ADMIN_EMAIL",
+  "OWNER_PORTAL_API_TOKEN",
+  "PROPERTY_OS_DEMO_AUTH",
+  "MCP_SERVER_URL",
+  "AGENT_RUNTIME_URL",
+  "OWNER_NOTIFICATION_WEBHOOK_URL"
+];
 
 export const blockedV1Actions = [
   "publish listing",
@@ -94,7 +103,7 @@ export const ownerApprovalRequiredFor = [
 ];
 
 export function runtimeHealth(): RuntimeHealth {
-  const missingEnv = requiredRuntimeEnv.filter((name) => !process.env[name]);
+  const missingEnv = [...requiredRuntimeEnv, ...requiredProductionEnv].filter((name) => !process.env[name]);
   const notificationMode: RuntimeNotificationMode = process.env.OWNER_NOTIFICATION_WEBHOOK_URL
     ? "webhook-ready"
     : process.env.OWNER_NOTIFICATION_EMAIL
@@ -106,13 +115,13 @@ export function runtimeHealth(): RuntimeHealth {
     tenantModel: missingEnv.includes("DATABASE_URL") ? "single-demo" : "multi-tenant-ready",
     adapter: missingEnv.includes("DATABASE_URL") ? "demo-memory" : "postgres",
     notificationMode,
-    requiredEnv: requiredRuntimeEnv,
+    requiredEnv: [...requiredRuntimeEnv, ...requiredProductionEnv],
     optionalEnv: optionalRuntimeEnv,
     missingEnv,
     capabilities: {
       database: Boolean(process.env.DATABASE_URL),
       ownerNotification: notificationMode !== "not-configured",
-      auth: Boolean(process.env.AUTH_PROVIDER && process.env.OWNER_ADMIN_EMAIL),
+      auth: Boolean(process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH),
       mcpServer: Boolean(process.env.MCP_SERVER_URL),
       agentRuntime: Boolean(process.env.AGENT_RUNTIME_URL)
     },

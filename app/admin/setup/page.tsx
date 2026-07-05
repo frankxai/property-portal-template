@@ -2,6 +2,7 @@ import Link from "next/link";
 import { setupSteps } from "@/lib/product";
 import { properties } from "@/data/properties";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 
 const toneByStatus = {
   ready: undefined,
@@ -10,7 +11,8 @@ const toneByStatus = {
   later: "warning"
 } as const;
 
-export default function SetupPage() {
+export default async function SetupPage() {
+  await requireOwnerAccess("/admin/setup");
   const property = properties[0];
 
   return (

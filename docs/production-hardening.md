@@ -3,6 +3,9 @@
 ## Security
 
 - Use authenticated owner/admin routes before real data.
+- Configure the built-in owner passcode gate with `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`, or replace it with a reviewed identity provider.
+- Keep `PROPERTY_OS_DEMO_AUTH=false` in production.
+- Use `OWNER_PORTAL_API_TOKEN` only for trusted server-to-server automation and rotate it when an implementer leaves.
 - Store inquiries, support tickets, approvals, and agent runs in a tenant-scoped database.
 - Apply `db/rls.sql` after `db/schema.sql` so Postgres enforces tenant isolation through `property_os.organization_id`.
 - Use `/admin/runtime` to verify adapter, notification, capability, queue, and audit posture.
@@ -47,10 +50,11 @@ Before production:
 2. Apply `db/schema.sql`.
 3. Apply `db/rls.sql`.
 4. Seed `organizations` and `properties` for `PROPERTY_OS_ORG_ID`.
-5. Add auth and roles.
-6. Wire sanitized owner notification webhook or worker.
-7. Replace sample content and media.
-8. Run validation, privacy, typecheck, build, smoke, and visual QA.
-9. Verify Vercel preview.
-10. Review owner approval routes.
-11. Record residual risks.
+5. Configure owner auth with `npm run auth:hash -- "private owner passcode"` or a reviewed identity provider.
+6. Run `npm run db:rls:smoke` against the target database.
+7. Wire sanitized owner notification webhook or worker.
+8. Replace sample content and media.
+9. Run validation, privacy, typecheck, build, smoke, and visual QA.
+10. Verify Vercel preview.
+11. Review owner approval routes.
+12. Record residual risks.

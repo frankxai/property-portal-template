@@ -41,6 +41,9 @@ npm run agent:dry-run
 npm run typecheck
 npm run build
 npm run smoke
+npm run auth:smoke
+npm run auth:hash -- "private owner passcode"
+npm run db:rls:smoke
 ```
 
 ## Data Model

@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { listingDrafts, properties } from "@/data/properties";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 
-export default function OwnerPage() {
+export default async function OwnerPage() {
+  await requireOwnerAccess("/owner");
   const property = properties[0];
   const waitingListings = listingDrafts.filter((draft) => draft.status === "owner-review");
 

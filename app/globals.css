@@ -122,6 +122,10 @@ select {
   min-width: 0;
 }
 
+.narrow-shell {
+  max-width: 760px;
+}
+
 .hero {
   min-height: calc(100vh - 92px);
   display: grid;
@@ -345,6 +349,30 @@ select {
   border-radius: 6px;
   padding: 10px 12px;
   color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.stack input {
+  width: 100%;
+  min-height: 44px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.error-text {
+  color: #ffd0d0;
+}
+
+.code-block {
+  display: block;
+  overflow-x: auto;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: #d7f7f1;
   background: rgba(255, 255, 255, 0.05);
 }
 

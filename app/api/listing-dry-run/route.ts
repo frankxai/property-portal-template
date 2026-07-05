@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireOwnerApiAccess } from "@/lib/auth";
 import { notifyOwner } from "@/lib/owner-notifications";
 import { persistListingDryRun } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
@@ -17,6 +18,9 @@ const channels: ListingChannel[] = [
 ];
 
 export async function POST(request: Request) {
+  const denied = await requireOwnerApiAccess(request);
+  if (denied) return denied;
+
   const input = await request.json() as Partial<{
     propertySlug: string;
     channel: ListingChannel;

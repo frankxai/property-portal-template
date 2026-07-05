@@ -1,5 +1,6 @@
 import { operatingCadence, releaseGates, successCriteria, tastePrinciples } from "@/lib/ops";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 
 function GateBadge({ status }: { status: "required" | "ready" | "manual" }) {
   if (status === "ready") {
@@ -9,7 +10,9 @@ function GateBadge({ status }: { status: "required" | "ready" | "manual" }) {
   return <StatusBadge tone="warning">{status}</StatusBadge>;
 }
 
-export default function OpsPage() {
+export default async function OpsPage() {
+  await requireOwnerAccess("/admin/ops");
+
   return (
     <main className="page">
       <div className="shell">

@@ -28,8 +28,9 @@ Production installs should:
 4. seed `organizations` and approved `properties`
 5. set `PROPERTY_OS_ORG_ID`
 6. set `DATABASE_URL`
-7. add auth and role checks before real owner/admin use
-8. verify `/admin/runtime` and `/api/runtime/snapshot`
+7. configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
+8. run `npm run db:rls:smoke`
+9. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
 
 The adapter writes:
 
@@ -59,7 +60,9 @@ Install order:
 2. Run `db/rls.sql`.
 3. Run `db/seed-sample.sql` for local production-mode smoke tests, or apply a private owner seed.
 4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
-5. Confirm `/api/runtime/snapshot` returns counts for only that organization.
+5. Configure owner auth.
+6. Run `npm run db:rls:smoke`.
+7. Confirm `/api/runtime/snapshot` returns counts for only that organization from an owner session.
 
 ## Owner Notifications
 
@@ -88,6 +91,7 @@ Do not put real renter data through the portal until:
 
 - Postgres writes are verified
 - auth and owner/admin role checks exist
+- `npm run db:rls:smoke` passes against the target database
 - row-level security policies are applied
 - retention and deletion policy is defined
 - backups are enabled

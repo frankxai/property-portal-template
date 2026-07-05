@@ -1,5 +1,6 @@
 import { integrations } from "@/lib/product";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 
 const toneByStatus = {
   connected: undefined,
@@ -9,7 +10,9 @@ const toneByStatus = {
   blocked: "danger"
 } as const;
 
-export default function IntegrationsPage() {
+export default async function IntegrationsPage() {
+  await requireOwnerAccess("/admin/integrations");
+
   return (
     <main className="page">
       <div className="shell">

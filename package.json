@@ -1,6 +1,6 @@
 {
   "name": "property-portal-template",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "Premium Next.js renter portal and owner dashboard for Property Intelligence OS.",
   "license": "MIT",
   "private": true,
@@ -18,7 +18,10 @@
     "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs",
     "privacy": "node scripts/privacy-scan.mjs",
     "agent:dry-run": "node --experimental-strip-types scripts/agent-dry-run.mjs",
-    "smoke": "node scripts/e2e-smoke.mjs"
+    "smoke": "node scripts/e2e-smoke.mjs",
+    "auth:smoke": "node scripts/auth-boundary-smoke.mjs",
+    "auth:hash": "node scripts/generate-owner-passcode-hash.mjs",
+    "db:rls:smoke": "node scripts/postgres-rls-smoke.mjs"
   },
   "dependencies": {
     "next": "15.5.19",

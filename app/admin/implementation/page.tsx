@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { implementationReadiness } from "@/lib/implementation";
 import { StatusBadge } from "@/components/StatusBadge";
+import { requireOwnerAccess } from "@/lib/auth";
 import type { ImplementationStatus } from "@/lib/types";
 
 const toneByStatus: Record<ImplementationStatus, "warning" | "danger" | undefined> = {
@@ -11,7 +12,8 @@ const toneByStatus: Record<ImplementationStatus, "warning" | "danger" | undefine
   blocked: "danger"
 };
 
-export default function ImplementationPage() {
+export default async function ImplementationPage() {
+  await requireOwnerAccess("/admin/implementation");
   const readiness = implementationReadiness();
 
   return (

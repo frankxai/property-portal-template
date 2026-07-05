@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { requireOwnerApiAccess } from "@/lib/auth";
 import { notifyOwner } from "@/lib/owner-notifications";
 import { persistApproval } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
@@ -14,6 +15,9 @@ const allowedKinds: ApprovalKind[] = [
 ];
 
 export async function POST(request: Request) {
+  const denied = await requireOwnerApiAccess(request);
+  if (denied) return denied;
+
   const input = await request.json() as Partial<{
     kind: ApprovalKind;
     sourceId: string;
