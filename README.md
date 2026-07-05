@@ -47,12 +47,20 @@ npm run smoke
 
 The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions use a demo in-memory store by default and switch to the Postgres adapter when `DATABASE_URL` is configured. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues or notification workers.
 
-The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, and audit events.
+The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
 
 Runtime APIs:
 
 - `/api/runtime/health`: environment, adapter, notification, and capability posture
 - `/api/runtime/snapshot`: counts, recent demo queue items, audit posture, and production notes
+
+Production database order:
+
+1. Apply `db/schema.sql`.
+2. Apply `db/rls.sql`.
+3. Seed with `db/seed-sample.sql` or a private owner seed.
+4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
+5. Verify `/admin/runtime` in the deployed preview before real renter data.
 
 ## Implementation Cockpit
 

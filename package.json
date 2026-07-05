@@ -1,6 +1,6 @@
 {
   "name": "property-portal-template",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Premium Next.js renter portal and owner dashboard for Property Intelligence OS.",
   "license": "MIT",
   "private": true,

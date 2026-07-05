@@ -37,4 +37,4 @@ Show the owner:
 
 ## Production Rule
 
-Use a Vercel preview before production when the project is connected to Vercel. Production requires owner approval for copy, media, availability language, urgent support language, runtime storage, notification routing, and support ownership.
+Use a Vercel preview before production when the project is connected to Vercel. Production requires owner approval for copy, media, availability language, urgent support language, runtime storage, notification routing, support ownership, `db/schema.sql`, `db/rls.sql`, and the seeded `PROPERTY_OS_ORG_ID`.

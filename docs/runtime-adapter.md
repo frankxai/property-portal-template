@@ -24,11 +24,12 @@ Production installs should:
 
 1. create a managed Postgres database
 2. apply `db/schema.sql`
-3. seed `organizations` and approved `properties`
-4. set `PROPERTY_OS_ORG_ID`
-5. set `DATABASE_URL`
-6. add auth and role checks before real owner/admin use
-7. verify `/admin/runtime` and `/api/runtime/snapshot`
+3. apply `db/rls.sql`
+4. seed `organizations` and approved `properties`
+5. set `PROPERTY_OS_ORG_ID`
+6. set `DATABASE_URL`
+7. add auth and role checks before real owner/admin use
+8. verify `/admin/runtime` and `/api/runtime/snapshot`
 
 The adapter writes:
 
@@ -39,6 +40,26 @@ The adapter writes:
 - listing dry-runs and write traces to `audit_events`
 
 Private renter messages, emails, and support details belong only in runtime storage. Public repos and GitHub issues receive sanitized summaries.
+
+## Tenant Isolation
+
+`db/rls.sql` enables row-level security on all runtime tables and defines policies around `property_os.organization_id`.
+
+The app sets that tenant context inside each Postgres transaction before runtime writes or runtime snapshot reads:
+
+```sql
+select set_config('property_os.organization_id', '<PROPERTY_OS_ORG_ID>', true);
+```
+
+This does not replace application auth. It gives implementers a database-level tenant boundary so a future owner or agency install can move toward multi-owner operation without relying only on application filters.
+
+Install order:
+
+1. Run `db/schema.sql`.
+2. Run `db/rls.sql`.
+3. Run `db/seed-sample.sql` for local production-mode smoke tests, or apply a private owner seed.
+4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
+5. Confirm `/api/runtime/snapshot` returns counts for only that organization.
 
 ## Owner Notifications
 
@@ -67,6 +88,7 @@ Do not put real renter data through the portal until:
 
 - Postgres writes are verified
 - auth and owner/admin role checks exist
+- row-level security policies are applied
 - retention and deletion policy is defined
 - backups are enabled
 - owner notification failure path is tested

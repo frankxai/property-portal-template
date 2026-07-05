@@ -87,6 +87,19 @@ function getSql() {
   return sqlClient;
 }
 
+async function withOrganizationContext<T>(
+  sql: postgres.Sql,
+  run: (scopedSql: postgres.Sql) => Promise<T>
+): Promise<T> {
+  const result = await sql.begin(async (transactionSql) => {
+    await transactionSql`
+      select set_config('property_os.organization_id', ${organizationId()}, true)
+    `;
+    return run(transactionSql as unknown as postgres.Sql);
+  });
+  return result as T;
+}
+
 async function getPropertyId(sql: postgres.Sql, propertySlug: string) {
   const rows = await sql<{ id: string }[]>`
     select id
@@ -126,20 +139,22 @@ export async function persistInquiry(input: {
   if (!sql) return demoRecord(input.item, input.auditEvent);
 
   try {
-    const propertyId = await getPropertyId(sql, input.payload.propertySlug);
-    await sql`
-      insert into inquiries (
-        id, organization_id, property_id, status, requester_name, requester_email,
-        rental_window, message_private, sanitized_summary, owner_approval_required, created_at, updated_at
-      )
-      values (
-        ${input.item.id}, ${organizationId()}, ${propertyId}, 'owner-review',
-        ${input.payload.name}, ${input.payload.email}, ${input.payload.rentalWindow},
-        ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerApprovalRequired},
-        ${input.item.createdAt}, ${input.item.createdAt}
-      )
-    `;
-    await insertAudit(sql, input.auditEvent, "inquiry", input.item.id);
+    await withOrganizationContext(sql, async (scopedSql) => {
+      const propertyId = await getPropertyId(scopedSql, input.payload.propertySlug);
+      await scopedSql`
+        insert into inquiries (
+          id, organization_id, property_id, status, requester_name, requester_email,
+          rental_window, message_private, sanitized_summary, owner_approval_required, created_at, updated_at
+        )
+        values (
+          ${input.item.id}, ${organizationId()}, ${propertyId}, 'owner-review',
+          ${input.payload.name}, ${input.payload.email}, ${input.payload.rentalWindow},
+          ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerApprovalRequired},
+          ${input.item.createdAt}, ${input.item.createdAt}
+        )
+      `;
+      await insertAudit(scopedSql, input.auditEvent, "inquiry", input.item.id);
+    });
     return { adapter: "postgres", status: "recorded", target: "inquiries", detail: "Recorded inquiry in Postgres runtime storage." };
   } catch {
     return failureReceipt("postgres", "inquiries");
@@ -155,20 +170,22 @@ export async function persistSupport(input: {
   if (!sql) return demoRecord(input.item, input.auditEvent);
 
   try {
-    const propertyId = await getPropertyId(sql, input.payload.propertySlug);
-    await sql`
-      insert into support_tickets (
-        id, organization_id, property_id, category, urgency, route, status,
-        message_private, sanitized_summary, owner_action, owner_approval_required, created_at, updated_at
-      )
-      values (
-        ${input.item.id}, ${organizationId()}, ${propertyId}, ${input.payload.category},
-        ${input.payload.urgency}, ${input.item.route}, 'owner-review',
-        ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerAction},
-        ${input.item.ownerApprovalRequired}, ${input.item.createdAt}, ${input.item.createdAt}
-      )
-    `;
-    await insertAudit(sql, input.auditEvent, "support_ticket", input.item.id);
+    await withOrganizationContext(sql, async (scopedSql) => {
+      const propertyId = await getPropertyId(scopedSql, input.payload.propertySlug);
+      await scopedSql`
+        insert into support_tickets (
+          id, organization_id, property_id, category, urgency, route, status,
+          message_private, sanitized_summary, owner_action, owner_approval_required, created_at, updated_at
+        )
+        values (
+          ${input.item.id}, ${organizationId()}, ${propertyId}, ${input.payload.category},
+          ${input.payload.urgency}, ${input.item.route}, 'owner-review',
+          ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerAction},
+          ${input.item.ownerApprovalRequired}, ${input.item.createdAt}, ${input.item.createdAt}
+        )
+      `;
+      await insertAudit(scopedSql, input.auditEvent, "support_ticket", input.item.id);
+    });
     return { adapter: "postgres", status: "recorded", target: "support_tickets", detail: "Recorded support ticket in Postgres runtime storage." };
   } catch {
     return failureReceipt("postgres", "support_tickets");
@@ -192,11 +209,13 @@ export async function persistApproval(input: {
   if (!sql) return demoRecord(item, input.auditEvent);
 
   try {
-    await sql`
-      insert into approvals (id, organization_id, subject_type, subject_id, status, requested_by, created_at)
-      values (${input.approval.id}, ${organizationId()}, ${input.approval.kind}, ${input.approval.sourceId}, 'requested', 'system', ${input.approval.createdAt})
-    `;
-    await insertAudit(sql, input.auditEvent, "approval", input.approval.id);
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await scopedSql`
+        insert into approvals (id, organization_id, subject_type, subject_id, status, requested_by, created_at)
+        values (${input.approval.id}, ${organizationId()}, ${input.approval.kind}, ${input.approval.sourceId}, 'requested', 'system', ${input.approval.createdAt})
+      `;
+      await insertAudit(scopedSql, input.auditEvent, "approval", input.approval.id);
+    });
     return { adapter: "postgres", status: "recorded", target: "approvals", detail: "Recorded approval request in Postgres runtime storage." };
   } catch {
     return failureReceipt("postgres", "approvals");
@@ -225,11 +244,13 @@ export async function persistAgentRun(input: {
   if (!sql) return demoRecord(item, input.auditEvent);
 
   try {
-    await sql`
-      insert into agent_runs (id, organization_id, role, trigger, output, approval_risk, owner_action, created_at)
-      values (${input.id}, ${organizationId()}, ${input.payload.role}, ${input.payload.trigger}, ${input.payload.output}, ${input.payload.approvalRisk}, ${input.ownerAction}, ${input.auditEvent.createdAt})
-    `;
-    await insertAudit(sql, input.auditEvent, "agent_run", input.id);
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await scopedSql`
+        insert into agent_runs (id, organization_id, role, trigger, output, approval_risk, owner_action, created_at)
+        values (${input.id}, ${organizationId()}, ${input.payload.role}, ${input.payload.trigger}, ${input.payload.output}, ${input.payload.approvalRisk}, ${input.ownerAction}, ${input.auditEvent.createdAt})
+      `;
+      await insertAudit(scopedSql, input.auditEvent, "agent_run", input.id);
+    });
     return { adapter: "postgres", status: "recorded", target: "agent_runs", detail: "Recorded agent run in Postgres runtime storage." };
   } catch {
     return failureReceipt("postgres", "agent_runs");
@@ -257,7 +278,9 @@ export async function persistListingDryRun(input: {
   if (!sql) return demoRecord(item, input.auditEvent);
 
   try {
-    await insertAudit(sql, input.auditEvent, "listing_dry_run", input.id);
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await insertAudit(scopedSql, input.auditEvent, "listing_dry_run", input.id);
+    });
     return { adapter: "postgres", status: "recorded", target: "audit_events", detail: "Recorded listing dry-run audit event in Postgres runtime storage." };
   } catch {
     return failureReceipt("postgres", "audit_events");
@@ -269,24 +292,26 @@ export async function persistNotification(item: RuntimeQueueItem): Promise<Runti
   if (!sql) return demoRecord(item);
 
   try {
-    await sql`
-      insert into audit_events (id, organization_id, actor, event_type, subject_type, subject_id, metadata, created_at)
-      values (
-        ${item.id},
-        ${organizationId()},
-        'system',
-        'owner_notification.queued',
-        'notification',
-        ${item.id},
-        ${sql.json({
-          route: item.route,
-          sanitizedSummary: item.sanitizedSummary,
-          ownerAction: item.ownerAction,
-          ownerApprovalRequired: item.ownerApprovalRequired
-        })},
-        ${item.createdAt}
-      )
-    `;
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await scopedSql`
+        insert into audit_events (id, organization_id, actor, event_type, subject_type, subject_id, metadata, created_at)
+        values (
+          ${item.id},
+          ${organizationId()},
+          'system',
+          'owner_notification.queued',
+          'notification',
+          ${item.id},
+          ${scopedSql.json({
+            route: item.route,
+            sanitizedSummary: item.sanitizedSummary,
+            ownerAction: item.ownerAction,
+            ownerApprovalRequired: item.ownerApprovalRequired
+          })},
+          ${item.createdAt}
+        )
+      `;
+    });
     return {
       adapter: "postgres",
       status: "recorded",
@@ -321,15 +346,18 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
   }
 
   try {
-    const [inquiries, support, approvals, agentRuns, notifications, listingDryRuns, audit] = await Promise.all([
-      sql`select count(*)::int as count from inquiries where organization_id = ${organizationId()}`,
-      sql`select count(*)::int as count from support_tickets where organization_id = ${organizationId()}`,
-      sql`select count(*)::int as count from approvals where organization_id = ${organizationId()}`,
-      sql`select count(*)::int as count from agent_runs where organization_id = ${organizationId()}`,
-      sql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'notification'`,
-      sql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'listing_dry_run'`,
-      sql`select count(*)::int as count from audit_events where organization_id = ${organizationId()}`
-    ]);
+    const [inquiries, support, approvals, agentRuns, notifications, listingDryRuns, audit] = await withOrganizationContext(
+      sql,
+      async (scopedSql) => Promise.all([
+        scopedSql`select count(*)::int as count from inquiries where organization_id = ${organizationId()}`,
+        scopedSql`select count(*)::int as count from support_tickets where organization_id = ${organizationId()}`,
+        scopedSql`select count(*)::int as count from approvals where organization_id = ${organizationId()}`,
+        scopedSql`select count(*)::int as count from agent_runs where organization_id = ${organizationId()}`,
+        scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'notification'`,
+        scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'listing_dry_run'`,
+        scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()}`
+      ])
+    );
 
     return {
       health,

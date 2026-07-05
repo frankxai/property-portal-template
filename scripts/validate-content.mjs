@@ -6,10 +6,15 @@ const productSource = await readFile(path.join(process.cwd(), "lib", "product.ts
 const runtimeContracts = await readFile(path.join(process.cwd(), "lib", "runtime-contracts.ts"), "utf8");
 const implementationSource = await readFile(path.join(process.cwd(), "lib", "implementation.ts"), "utf8");
 const runtimeStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
+const rlsSource = await readFile(path.join(process.cwd(), "db", "rls.sql"), "utf8");
+const seedSource = await readFile(path.join(process.cwd(), "db", "seed-sample.sql"), "utf8");
 await readFile(path.join(process.cwd(), "lib", "owner-notifications.ts"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "v0-implementation-brief.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "implementation-cockpit.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "runtime-adapter.md"), "utf8");
+await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "install-support.md"), "utf8");
+await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "integration-request.md"), "utf8");
+await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "safety-review.md"), "utf8");
 
 const requiredSnippets = [
   "properties",
@@ -69,7 +74,26 @@ const requiredRuntimeStoreSnippets = [
   "persistApproval",
   "persistAgentRun",
   "persistListingDryRun",
+  "withOrganizationContext",
+  "property_os.organization_id",
   "postgres"
+];
+
+const requiredRlsSnippets = [
+  "property_os_current_organization_id",
+  "enable row level security",
+  "force row level security",
+  "organizations_tenant_isolation",
+  "properties_tenant_isolation",
+  "support_tickets_tenant_isolation",
+  "property_os_property_in_current_org"
+];
+
+const requiredSeedSnippets = [
+  "sample-org",
+  "urban-haven-sample",
+  "sample-owner",
+  "sample-property-urban-haven"
 ];
 
 for (const snippet of requiredRuntimeSnippets) {
@@ -87,6 +111,18 @@ for (const snippet of requiredImplementationSnippets) {
 for (const snippet of requiredRuntimeStoreSnippets) {
   if (!runtimeStoreSource.includes(snippet)) {
     throw new Error(`lib/runtime-store.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredRlsSnippets) {
+  if (!rlsSource.includes(snippet)) {
+    throw new Error(`db/rls.sql is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredSeedSnippets) {
+  if (!seedSource.includes(snippet)) {
+    throw new Error(`db/seed-sample.sql is missing ${snippet}`);
   }
 }
 
