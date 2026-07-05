@@ -4,7 +4,9 @@ import path from "node:path";
 const source = await readFile(path.join(process.cwd(), "data", "properties.ts"), "utf8");
 const productSource = await readFile(path.join(process.cwd(), "lib", "product.ts"), "utf8");
 const runtimeContracts = await readFile(path.join(process.cwd(), "lib", "runtime-contracts.ts"), "utf8");
+const implementationSource = await readFile(path.join(process.cwd(), "lib", "implementation.ts"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "v0-implementation-brief.md"), "utf8");
+await readFile(path.join(process.cwd(), "docs", "implementation-cockpit.md"), "utf8");
 
 const requiredSnippets = [
   "properties",
@@ -47,9 +49,23 @@ const requiredRuntimeSnippets = [
   "createListingDryRun"
 ];
 
+const requiredImplementationSnippets = [
+  "implementationLayers",
+  "implementationReadiness",
+  "partnerOffers",
+  "blockedV1Actions",
+  "runtimeMode"
+];
+
 for (const snippet of requiredRuntimeSnippets) {
   if (!runtimeContracts.includes(snippet)) {
     throw new Error(`lib/runtime-contracts.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredImplementationSnippets) {
+  if (!implementationSource.includes(snippet)) {
+    throw new Error(`lib/implementation.ts is missing ${snippet}`);
   }
 }
 

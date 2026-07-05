@@ -15,6 +15,7 @@ const routes = [
   "/support",
   "/owner",
   "/admin/setup",
+  "/admin/implementation",
   "/admin/listings",
   "/admin/integrations",
   "/admin/agent-runs",
@@ -112,6 +113,22 @@ async function expectRuntimeHealth() {
   }
 }
 
+async function expectImplementationReadiness() {
+  const response = await fetch(`${baseUrl}/api/implementation/readiness`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`/api/implementation/readiness returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (typeof payload.score !== "number" || !payload.layers?.length || !payload.partnerOffers?.length) {
+    throw new Error("/api/implementation/readiness did not expose score, layers, and partner offers");
+  }
+
+  if (!payload.blockedV1Actions?.includes("publish listing")) {
+    throw new Error("/api/implementation/readiness did not expose blocked v1 actions");
+  }
+}
+
 try {
   await waitForServer();
 
@@ -120,6 +137,7 @@ try {
   }
 
   await expectRuntimeHealth();
+  await expectImplementationReadiness();
 
   await postJson("/api/inquiries", {
     propertySlug: "urban-haven-sample",

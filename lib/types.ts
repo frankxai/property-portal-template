@@ -125,3 +125,24 @@ export type SetupStep = {
   status: "ready" | "needs-owner" | "recommended" | "later";
   outcome: string;
 };
+
+export type ImplementationStatus = "ready" | "manual" | "configure" | "planned" | "blocked";
+
+export type ImplementationLayer = {
+  id: string;
+  title: string;
+  status: ImplementationStatus;
+  ownerValue: string;
+  implementerAction: string;
+  evidence: string[];
+  productionGate: string;
+};
+
+export type PartnerOffer = {
+  id: string;
+  title: string;
+  buyer: string;
+  priceSignal: string;
+  includes: string[];
+  deliveryGate: string;
+};

@@ -25,6 +25,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/support`: support and maintenance intake
 - `/owner`: owner dashboard
 - `/admin/setup`: owner setup checklist and missing-fact workflow
+- `/admin/implementation`: installation readiness, agent architecture, production gates, and partner offer ladder
 - `/admin/listings`: listing draft studio
 - `/admin/integrations`: approved/manual/planned integration cockpit
 - `/admin/agent-runs`: owner-reviewed agent run ledger
@@ -47,6 +48,12 @@ The starter uses repo content in `data/properties.ts` for approved public facts.
 
 The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, and audit events.
 
+## Implementation Cockpit
+
+The route `/admin/implementation` turns the template into an installable product surface. It scores the current install across approved property knowledge, premium portal readiness, runtime storage, Codex/Claude/MCP agent substrate, listing operations, owner notifications, and business packaging.
+
+The API route `/api/implementation/readiness` exposes the same contract for automation, partner audits, and future onboarding flows. It intentionally reports missing environment variables and blocked v1 actions instead of pretending the demo template is production-persistent.
+
 ## V1 Safety
 
 - Static portal answers approved facts.
@@ -65,6 +72,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 ## Operating Docs
 
 - `docs/operator-runbook.md`
+- `docs/implementation-cockpit.md`
 - `docs/portal-scene-brief.md`
 - `docs/product-roadmap.md`
 - `docs/production-hardening.md`
