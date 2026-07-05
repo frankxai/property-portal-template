@@ -1,6 +1,20 @@
 # Property Portal Template
 
+[Deploy on Vercel](https://vercel.com/new/clone?repository-url=https://github.com/frankxai/property-portal-template) ·
+[Use this template](https://github.com/frankxai/property-portal-template/generate) ·
+[Download ZIP](https://github.com/frankxai/property-portal-template/archive/refs/heads/main.zip) ·
+[Operating System Template](https://github.com/frankxai/property-os-template)
+
 Vercel/Next.js template for a premium rental-property website, renter self-service portal, inquiry capture, support intake, owner dashboard, and listing draft admin.
+
+## Who This Is For
+
+- property owners who want a premium renter-facing web experience
+- agencies installing modern property websites and support workflows
+- implementers who pair Vercel frontends with GitHub-approved property knowledge
+- community builders who want a free, safe starting point for AI-assisted property operations
+
+This is the portal half of Property Intelligence OS. Pair it with `property-os-template` for agent roles, MCP boundaries, owner runbooks, partner offer design, and Railway worker architecture.
 
 ## Routes
 
@@ -42,7 +56,11 @@ The first production schema lives in `db/schema.sql`. It separates organizations
 
 ## Vercel
 
-Deploy as a normal Next.js project. Use preview deployments for owner review before production.
+Deploy as a normal Next.js project or use the deploy button above after the repository is public. Use preview deployments for owner review before production.
+
+## v0 Path
+
+Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the interface while preserving the safety model: approved facts, human approval, no automatic commitments, and operational dashboard density.
 
 ## Operating Docs
 
@@ -54,3 +72,7 @@ Deploy as a normal Next.js project. Use preview deployments for owner review bef
 - `docs/success-criteria.md`
 - `docs/taste-standard.md`
 - `docs/release-gate.md`
+
+## Support Boundary
+
+The public template runs in demo mode until a real database/auth/email adapter is installed. Do not use it with real renter data until production hardening, legal review, monitoring, and owner approval flows are complete.

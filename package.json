@@ -1,8 +1,15 @@
 {
   "name": "property-portal-template",
   "version": "0.1.0",
+  "description": "Premium Next.js renter portal and owner dashboard for Property Intelligence OS.",
+  "license": "MIT",
   "private": true,
   "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/frankxai/property-portal-template.git"
+  },
+  "homepage": "https://github.com/frankxai/property-portal-template#readme",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
