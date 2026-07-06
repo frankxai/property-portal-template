@@ -80,6 +80,20 @@ async function expectOk(path) {
   }
 }
 
+async function expectPageContains(path, snippets) {
+  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`${path} returned ${response.status}`);
+  }
+
+  const html = await response.text();
+  for (const snippet of snippets) {
+    if (!html.includes(snippet)) {
+      throw new Error(`${path} did not include ${snippet}`);
+    }
+  }
+}
+
 async function postJson(path, body) {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
@@ -135,6 +149,30 @@ async function expectImplementationReadiness() {
   }
 }
 
+async function expectInstallProofPacket() {
+  const response = await fetch(`${baseUrl}/api/install/proof-packet`, { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`/api/install/proof-packet returned ${response.status}`);
+  }
+
+  const payload = await response.json();
+  if (typeof payload.score !== "number" || !payload.installPhases?.length || !payload.commandChecks?.length) {
+    throw new Error("/api/install/proof-packet did not expose score, phases, and command checks");
+  }
+
+  if (!payload.installPhases.some((phase) => phase.id === "owner-auth")) {
+    throw new Error("/api/install/proof-packet did not include owner-auth phase");
+  }
+
+  if (!payload.commandChecks.some((check) => check.command === "npm run install:proof")) {
+    throw new Error("/api/install/proof-packet did not include npm run install:proof command check");
+  }
+
+  if (!payload.publicSafety?.secretHandling?.includes("does not print secret values")) {
+    throw new Error("/api/install/proof-packet did not include the secret redaction boundary");
+  }
+}
+
 async function expectRuntimeSnapshot() {
   const response = await fetch(`${baseUrl}/api/runtime/snapshot`, { cache: "no-store" });
   if (!response.ok) {
@@ -156,7 +194,13 @@ try {
 
   await expectRuntimeHealth();
   await expectImplementationReadiness();
+  await expectInstallProofPacket();
   await expectRuntimeSnapshot();
+  await expectPageContains("/admin/setup", [
+    "Install proof packet",
+    "No consequential action leaves the workspace automatically.",
+    "npm run install:proof"
+  ]);
 
   await postJson("/api/inquiries", {
     propertySlug: "urban-haven-sample",

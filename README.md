@@ -42,6 +42,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run install:proof
 npm run auth:hash -- "private owner passcode"
 npm run db:rls:smoke
 ```
@@ -71,6 +72,12 @@ The route `/admin/implementation` turns the template into an installable product
 
 The API route `/api/implementation/readiness` exposes the same contract for automation, partner audits, and future onboarding flows. It intentionally reports missing environment variables and blocked v1 actions instead of pretending the demo template is production-persistent.
 
+## Self-Service Install Proof
+
+The route `/admin/setup` includes the install proof cockpit: proof score, runtime posture, required commands, phase gates, missing production env names, owner approval boundaries, and blocked v1 actions.
+
+The protected API route `/api/install/proof-packet` exposes the same evidence for partner audits and onboarding automation. The local command `npm run install:proof` prints a public-safe JSON proof packet that reports environment key names and configured booleans only; it does not print secret values.
+
 ## V1 Safety
 
 - Static portal answers approved facts.
@@ -89,6 +96,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 ## Operating Docs
 
 - `docs/operator-runbook.md`
+- `docs/self-service-install.md`
 - `docs/implementation-cockpit.md`
 - `docs/runtime-adapter.md`
 - `docs/portal-scene-brief.md`

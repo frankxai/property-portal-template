@@ -5,12 +5,16 @@ const source = await readFile(path.join(process.cwd(), "data", "properties.ts"),
 const productSource = await readFile(path.join(process.cwd(), "lib", "product.ts"), "utf8");
 const runtimeContracts = await readFile(path.join(process.cwd(), "lib", "runtime-contracts.ts"), "utf8");
 const implementationSource = await readFile(path.join(process.cwd(), "lib", "implementation.ts"), "utf8");
+const installProofSource = await readFile(path.join(process.cwd(), "lib", "install-proof.ts"), "utf8");
 const runtimeStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
 const authSource = await readFile(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
 const rlsSource = await readFile(path.join(process.cwd(), "db", "rls.sql"), "utf8");
 const seedSource = await readFile(path.join(process.cwd(), "db", "seed-sample.sql"), "utf8");
 const rlsSmokeSource = await readFile(path.join(process.cwd(), "scripts", "postgres-rls-smoke.mjs"), "utf8");
 const authSmokeSource = await readFile(path.join(process.cwd(), "scripts", "auth-boundary-smoke.mjs"), "utf8");
+const installProofCliSource = await readFile(path.join(process.cwd(), "scripts", "install-proof-packet.mjs"), "utf8");
+const installProofRouteSource = await readFile(path.join(process.cwd(), "app", "api", "install", "proof-packet", "route.ts"), "utf8");
+const selfServiceInstallDocs = await readFile(path.join(process.cwd(), "docs", "self-service-install.md"), "utf8");
 await readFile(path.join(process.cwd(), "lib", "owner-notifications.ts"), "utf8");
 await readFile(path.join(process.cwd(), "app", "admin", "sign-in", "page.tsx"), "utf8");
 await readFile(path.join(process.cwd(), "app", "api", "auth", "owner", "sign-in", "route.ts"), "utf8");
@@ -76,6 +80,17 @@ const requiredImplementationSnippets = [
   "runtimeMode"
 ];
 
+const requiredInstallProofSnippets = [
+  "createInstallProofPacket",
+  "installPhases",
+  "owner-auth",
+  "runtime-database",
+  "npm run install:proof",
+  "does not print secret values",
+  "ownerApprovalRequiredFor",
+  "blockedV1Actions"
+];
+
 const requiredRuntimeStoreSnippets = [
   "runtimeSnapshot",
   "persistInquiry",
@@ -130,6 +145,28 @@ const requiredAuthSmokeSnippets = [
   "property_os_owner_session"
 ];
 
+const requiredInstallProofCliSnippets = [
+  "OWNER_PORTAL_SECRET",
+  "OWNER_PORTAL_PASSCODE_HASH",
+  "app/api/install/proof-packet/route.ts",
+  "does not print secret values",
+  "npm run db:rls:smoke"
+];
+
+const requiredInstallProofRouteSnippets = [
+  "requireOwnerApiAccess",
+  "createInstallProofPacket",
+  "NextResponse.json"
+];
+
+const requiredSelfServiceInstallSnippets = [
+  "/api/install/proof-packet",
+  "npm run install:proof",
+  "npm run db:rls:smoke",
+  "45-Minute Community Fork Path",
+  "does not print secret values"
+];
+
 for (const snippet of requiredRuntimeSnippets) {
   if (!runtimeContracts.includes(snippet)) {
     throw new Error(`lib/runtime-contracts.ts is missing ${snippet}`);
@@ -139,6 +176,12 @@ for (const snippet of requiredRuntimeSnippets) {
 for (const snippet of requiredImplementationSnippets) {
   if (!implementationSource.includes(snippet)) {
     throw new Error(`lib/implementation.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredInstallProofSnippets) {
+  if (!installProofSource.includes(snippet)) {
+    throw new Error(`lib/install-proof.ts is missing ${snippet}`);
   }
 }
 
@@ -175,6 +218,24 @@ for (const snippet of requiredRlsSmokeSnippets) {
 for (const snippet of requiredAuthSmokeSnippets) {
   if (!authSmokeSource.includes(snippet)) {
     throw new Error(`scripts/auth-boundary-smoke.mjs is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredInstallProofCliSnippets) {
+  if (!installProofCliSource.includes(snippet)) {
+    throw new Error(`scripts/install-proof-packet.mjs is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredInstallProofRouteSnippets) {
+  if (!installProofRouteSource.includes(snippet)) {
+    throw new Error(`app/api/install/proof-packet/route.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredSelfServiceInstallSnippets) {
+  if (!selfServiceInstallDocs.includes(snippet)) {
+    throw new Error(`docs/self-service-install.md is missing ${snippet}`);
   }
 }
 

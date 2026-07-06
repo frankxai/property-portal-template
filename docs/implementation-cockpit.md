@@ -27,6 +27,17 @@ The response includes:
 - `layers`: owner value, implementer action, evidence, and production gate per layer
 - `partnerOffers`: free fork, owner install, agency kit, and managed OS offer ladder
 
+## Install Proof Packet
+
+Use `/api/install/proof-packet` when the handoff needs an auditable owner or partner proof packet. It includes install phases, command checks, owner approval requirements, blocked v1 actions, runtime posture, and public safety boundaries.
+
+```bash
+curl -H "Authorization: Bearer $OWNER_PORTAL_API_TOKEN" /api/install/proof-packet
+npm run install:proof
+```
+
+The route and CLI report environment key names and configured booleans only. They do not print secret values.
+
 ## Partner Delivery Standard
 
 An implementation partner should not sell the public template as production-ready by itself. A paid install must include:

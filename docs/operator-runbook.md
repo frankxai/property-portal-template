@@ -19,6 +19,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run install:proof
 ```
 
 The smoke test starts `next start`, verifies the key routes, posts sample inquiry/support payloads, and shuts the server down.
@@ -41,9 +42,10 @@ Show the owner:
 - support page
 - owner dashboard
 - runtime control page
+- setup proof cockpit
 - listing draft admin
 - ops page
 
 ## Production Rule
 
-Use a Vercel preview before production when the project is connected to Vercel. Production requires owner approval for copy, media, availability language, urgent support language, owner auth, runtime storage, notification routing, support ownership, `db/schema.sql`, `db/rls.sql`, a passing `npm run db:rls:smoke`, and the seeded `PROPERTY_OS_ORG_ID`.
+Use a Vercel preview before production when the project is connected to Vercel. Production requires owner approval for copy, media, availability language, urgent support language, owner auth, runtime storage, notification routing, support ownership, the `npm run install:proof` packet, `db/schema.sql`, `db/rls.sql`, a passing `npm run db:rls:smoke`, and the seeded `PROPERTY_OS_ORG_ID`.
