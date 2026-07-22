@@ -23,6 +23,8 @@
     "auth:smoke": "node scripts/auth-boundary-smoke.mjs",
     "notification:smoke": "node scripts/notification-lifecycle-smoke.mjs",
     "notification:visual": "node scripts/notification-visual-qa.mjs",
+    "weekly:smoke": "node scripts/weekly-review-smoke.mjs",
+    "weekly:visual": "node scripts/weekly-review-visual-qa.mjs",
     "auth:hash": "node scripts/generate-owner-passcode-hash.mjs",
     "install:proof": "node scripts/install-proof-packet.mjs",
     "db:rls:smoke": "node scripts/postgres-rls-smoke.mjs",

@@ -11,6 +11,7 @@ const controlPlaneSource = await readFile(path.join(process.cwd(), "lib", "agent
 const notificationPolicySource = await readFile(path.join(process.cwd(), "lib", "notification-policy.ts"), "utf8");
 const notificationWorkerSource = await readFile(path.join(process.cwd(), "lib", "notification-worker.ts"), "utf8");
 const notificationStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
+const weeklyReviewSource = await readFile(path.join(process.cwd(), "lib", "weekly-review.ts"), "utf8");
 const authSource = await readFile(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
 const schemaSource = await readFile(path.join(process.cwd(), "db", "schema.sql"), "utf8");
 const rlsSource = await readFile(path.join(process.cwd(), "db", "rls.sql"), "utf8");
@@ -48,8 +49,17 @@ await readFile(path.join(process.cwd(), "app", "api", "notifications", "process"
 await readFile(path.join(process.cwd(), "app", "api", "notifications", "[id]", "acknowledge", "route.ts"), "utf8");
 await readFile(path.join(process.cwd(), "scripts", "notification-lifecycle-smoke.mjs"), "utf8");
 await readFile(path.join(process.cwd(), "scripts", "notification-visual-qa.mjs"), "utf8");
+const weeklyReviewComponentSource = await readFile(path.join(process.cwd(), "components", "WeeklyReviewConsole.tsx"), "utf8");
+const weeklyReviewRouteSource = await readFile(path.join(process.cwd(), "app", "api", "weekly-reviews", "route.ts"), "utf8");
+const weeklyReviewCompleteRouteSource = await readFile(path.join(process.cwd(), "app", "api", "weekly-reviews", "[id]", "complete", "route.ts"), "utf8");
+const weeklyReviewSmokeSource = await readFile(path.join(process.cwd(), "scripts", "weekly-review-smoke.mjs"), "utf8");
+await readFile(path.join(process.cwd(), "scripts", "weekly-review-visual-qa.mjs"), "utf8");
+await readFile(path.join(process.cwd(), "db", "003-weekly-owner-review.sql"), "utf8");
+await readFile(path.join(process.cwd(), "docs", "weekly-owner-review.md"), "utf8");
 await readFile(path.join(process.cwd(), "artifacts", "visual-qa", "notifications-desktop.png"));
 await readFile(path.join(process.cwd(), "artifacts", "visual-qa", "notifications-mobile.png"));
+await readFile(path.join(process.cwd(), "artifacts", "visual-qa", "weekly-review-desktop.png"));
+await readFile(path.join(process.cwd(), "artifacts", "visual-qa", "weekly-review-mobile.png"));
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "install-support.md"), "utf8");
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "integration-request.md"), "utf8");
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "safety-review.md"), "utf8");
@@ -165,6 +175,9 @@ const requiredSchemaSnippets = [
   "controlled_transitions",
   "notification_deliveries",
   "notification_events",
+  "weekly_owner_reviews",
+  "weekly_metric_observations",
+  "weekly_metric_observations_tenant_review_fk",
   "unique (organization_id, idempotency_key)"
 ];
 
@@ -227,6 +240,8 @@ const requiredRlsSnippets = [
   "support_tickets_tenant_isolation",
   "notification_deliveries_tenant_isolation",
   "notification_events_tenant_isolation",
+  "weekly_owner_reviews_tenant_isolation",
+  "weekly_metric_observations_tenant_isolation",
   "agent_missions_tenant_isolation",
   "transition_proposals_tenant_isolation",
   "approval_receipts_tenant_isolation",
@@ -248,7 +263,49 @@ const requiredRlsSmokeSnippets = [
   "relforcerowsecurity",
   "notification_deliveries",
   "notification_events",
+  "weekly_owner_reviews",
+  "weekly_metric_observations",
   "RLS isolation failed"
+];
+
+const requiredWeeklyReviewSnippets = [
+  "owner-review-time",
+  "self-service-coverage",
+  "vacancy-readiness",
+  "urgent-acknowledgement",
+  "unauthorized-actions",
+  "unmeasured",
+  "system-policy"
+];
+
+const requiredWeeklyReviewComponentSnippets = [
+  "/api/weekly-reviews",
+  "Keep",
+  "Change",
+  "Stop",
+  "Missing operational evidence remains unmeasured",
+  "governed action surface"
+];
+
+const requiredWeeklyReviewRouteSnippets = [
+  "requireOwnerApiAccess",
+  "externalActionsPerformed: []",
+  "governedActionBoundary"
+];
+
+const requiredWeeklyReviewCompleteRouteSnippets = [
+  "validateWeeklyReviewCompletion",
+  "contentApplied: false",
+  "externalActionsPerformed: []",
+  "metricBoundary"
+];
+
+const requiredWeeklyReviewSmokeSnippets = [
+  "idempotent start/completion",
+  "urgent-acknowledgement",
+  "unmeasured",
+  "externalActionsPerformed",
+  "changed, false"
 ];
 
 const requiredNotificationPolicySnippets = [
@@ -356,6 +413,36 @@ for (const snippet of requiredNotificationWorkerSnippets) {
 for (const snippet of ["notification_deliveries", "notification_events", "notificationSummary"]) {
   if (!notificationStoreSource.includes(snippet)) {
     throw new Error(`lib/runtime-store.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWeeklyReviewSnippets) {
+  if (!weeklyReviewSource.includes(snippet)) {
+    throw new Error(`lib/weekly-review.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWeeklyReviewComponentSnippets) {
+  if (!weeklyReviewComponentSource.includes(snippet)) {
+    throw new Error(`components/WeeklyReviewConsole.tsx is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWeeklyReviewRouteSnippets) {
+  if (!weeklyReviewRouteSource.includes(snippet)) {
+    throw new Error(`app/api/weekly-reviews/route.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWeeklyReviewCompleteRouteSnippets) {
+  if (!weeklyReviewCompleteRouteSource.includes(snippet)) {
+    throw new Error(`app/api/weekly-reviews/[id]/complete/route.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWeeklyReviewSmokeSnippets) {
+  if (!weeklyReviewSmokeSource.includes(snippet)) {
+    throw new Error(`scripts/weekly-review-smoke.mjs is missing ${snippet}`);
   }
 }
 

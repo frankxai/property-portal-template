@@ -19,6 +19,8 @@ const requiredTables = [
   "support_tickets",
   "notification_deliveries",
   "notification_events",
+  "weekly_owner_reviews",
+  "weekly_metric_observations",
   "approvals",
   "agent_runs",
   "agent_missions",
@@ -43,13 +45,17 @@ async function countVisibleRows(orgId) {
     const support = await tx`select count(*)::int as count from support_tickets`;
     const notifications = await tx`select count(*)::int as count from notification_deliveries`;
     const notificationEvents = await tx`select count(*)::int as count from notification_events`;
+    const weeklyReviews = await tx`select count(*)::int as count from weekly_owner_reviews`;
+    const weeklyObservations = await tx`select count(*)::int as count from weekly_metric_observations`;
 
     return {
       currentOrganizationId: current[0]?.current_organization_id,
       properties: properties[0]?.count ?? 0,
       supportTickets: support[0]?.count ?? 0,
       notifications: notifications[0]?.count ?? 0,
-      notificationEvents: notificationEvents[0]?.count ?? 0
+      notificationEvents: notificationEvents[0]?.count ?? 0,
+      weeklyReviews: weeklyReviews[0]?.count ?? 0,
+      weeklyObservations: weeklyObservations[0]?.count ?? 0
     };
   });
 }
@@ -88,7 +94,9 @@ try {
     impossibleOrg.properties !== 0 ||
     impossibleOrg.supportTickets !== 0 ||
     impossibleOrg.notifications !== 0 ||
-    impossibleOrg.notificationEvents !== 0
+    impossibleOrg.notificationEvents !== 0 ||
+    impossibleOrg.weeklyReviews !== 0 ||
+    impossibleOrg.weeklyObservations !== 0
   ) {
     throw new Error("RLS isolation failed: rows were visible for an unseeded organization context.");
   }

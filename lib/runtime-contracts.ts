@@ -20,7 +20,9 @@ export type AuditEventType =
   | "approval.requested"
   | "agent_mission.created"
   | "agent_run.logged"
-  | "listing_dry_run.created";
+  | "listing_dry_run.created"
+  | "weekly_review.started"
+  | "weekly_review.completed";
 
 export type RuntimeHealth = {
   mode: RuntimeMode;

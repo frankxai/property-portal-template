@@ -67,6 +67,14 @@ const requiredFiles = [
   "docs/notification-lifecycle.md",
   "app/admin/notifications/page.tsx",
   "app/api/notifications/process/route.ts",
+  "lib/weekly-review.ts",
+  "components/WeeklyReviewConsole.tsx",
+  "app/api/weekly-reviews/route.ts",
+  "app/api/weekly-reviews/[id]/complete/route.ts",
+  "scripts/weekly-review-smoke.mjs",
+  "scripts/weekly-review-visual-qa.mjs",
+  "db/003-weekly-owner-review.sql",
+  "docs/weekly-owner-review.md",
   "docs/self-service-install.md",
   "docs/implementation-cockpit.md",
   "docs/agent-control-center-spec.md",
@@ -112,7 +120,7 @@ const phases = [
   {
     id: "runtime-database",
     status: process.env.DATABASE_URL ? "manual" : "configure",
-    gate: "Live RLS smoke covers the notification outbox/event tables in the dedicated portal database; Railway uses a separate control-plane database."
+    gate: "Live RLS smoke covers intake, notification, and weekly evidence tables in the dedicated portal database; Railway uses a separate control-plane database."
   },
   {
     id: "agent-substrate",
@@ -123,6 +131,11 @@ const phases = [
     id: "owner-notifications",
     status: notificationReady ? "manual" : "configure",
     gate: "Signed primary delivery, retry, urgent fallback, and owner acknowledgement leave tenant-scoped receipts."
+  },
+  {
+    id: "weekly-measurement",
+    status: process.env.DATABASE_URL ? "manual" : "configure",
+    gate: "One tenant-scoped review preserves five met, not-met, or unmeasured observations and performs zero external actions."
   },
   {
     id: "release-and-business-handoff",
@@ -157,6 +170,8 @@ const packet = {
     "npm run auth:smoke",
     "npm run notification:smoke",
     "npm run notification:visual",
+    "npm run weekly:smoke",
+    "npm run weekly:visual",
     "npm run mcp:smoke",
     "npm run visual:qa",
     "npm run audit",
@@ -168,6 +183,7 @@ const packet = {
     dataBoundary: "Approved facts live in GitHub content; private renter submissions belong in runtime storage.",
     databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
     notificationBoundary: "The outbox stores sanitized summaries and hashes only; signed delivery and acknowledgement never send renter replies or dispatch work.",
+    measurementBoundary: "Weekly evidence preserves unmeasured states and the zero-action observation covers only this product's governed action surface.",
     automationBoundary: "Agents draft from server-approved evidence only. Owner review records an outcome but does not apply or send content."
   }
 };

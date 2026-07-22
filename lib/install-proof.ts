@@ -75,9 +75,9 @@ export function createInstallProofPacket() {
       status: hasDatabase ? "manual" : "configure",
       ownerOutcome: "Inquiries, support tickets, approvals, and agent runs persist in tenant-scoped storage instead of demo memory.",
       implementerAction: "Apply schema, RLS, seed organization/property rows, set the organization id, configure backups and retention, then run the live RLS smoke.",
-      evidence: ["db/schema.sql", "db/rls.sql", "db/seed-sample.sql", "scripts/postgres-rls-smoke.mjs", "/admin/runtime"],
+      evidence: ["db/schema.sql", "db/rls.sql", "db/002-notification-lifecycle.sql", "db/003-weekly-owner-review.sql", "db/seed-sample.sql", "scripts/postgres-rls-smoke.mjs", "/admin/runtime"],
       commands: ["npm run db:rls:smoke"],
-      gate: "Live Postgres install passes RLS isolation, backups are configured, and retention/deletion ownership is documented."
+      gate: "Live Postgres install passes RLS isolation for intake, notification, and weekly evidence tables; backups and retention/deletion ownership are documented."
     },
     {
       id: "intake-and-support",
@@ -118,6 +118,16 @@ export function createInstallProofPacket() {
       evidence: ["db/002-notification-lifecycle.sql", "docs/notification-lifecycle.md", "/admin/notifications", "notification event ledger"],
       commands: ["npm run notification:smoke", "npm run db:rls:smoke"],
       gate: "Urgent delivery, bounded retry, acknowledgement timeout, fallback, and owner acknowledgement each leave sanitized tenant-scoped receipts."
+    },
+    {
+      id: "weekly-measurement",
+      title: "Weekly owner review and metric evidence",
+      status: hasDatabase ? "manual" : "configure",
+      ownerOutcome: "The owner completes one short weekly review with honest target, gap, and unmeasured evidence instead of vanity analytics.",
+      implementerAction: "Apply the weekly review migration, run the smoke and visual checks, then archive one live five-metric review with Keep, Change, and Stop decisions.",
+      evidence: ["db/003-weekly-owner-review.sql", "docs/weekly-owner-review.md", "/admin/ops", "weekly metric observation ledger"],
+      commands: ["npm run weekly:smoke", "npm run weekly:visual", "npm run db:rls:smoke"],
+      gate: "One tenant-scoped production review preserves met, not-met, and unmeasured states, and completion performs zero external actions."
     },
     {
       id: "release-and-business-handoff",
@@ -187,6 +197,18 @@ export function createInstallProofPacket() {
       requiresLiveSecret: false
     },
     {
+      command: "npm run weekly:smoke",
+      purpose: "Prove idempotent weekly start and completion, five honest metrics, immutable replay, and zero downstream actions.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run weekly:visual",
+      purpose: "Capture exact desktop/mobile weekly evidence and reject overflow, clipped decisions, or unstable navigation.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
       command: "npm run audit",
       purpose: "Reject known moderate-or-higher dependency vulnerabilities.",
       requiredBefore: "owner-preview",
@@ -245,6 +267,7 @@ export function createInstallProofPacket() {
       dataBoundary: "Approved property facts live in GitHub content; renter submissions and approvals belong in protected runtime storage.",
       databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
       notificationBoundary: "The outbox stores sanitized summaries and hashes only; signed delivery and acknowledgement never send renter replies or dispatch work.",
+      measurementBoundary: "Weekly evidence preserves unmeasured states and the zero-action observation covers only this product's governed action surface.",
       automationBoundary: "Agents draft and summarize only; consequential renter, listing, pricing, legal, access, repair, and payment actions require owner approval."
     }
   };

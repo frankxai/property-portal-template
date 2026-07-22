@@ -1,7 +1,14 @@
 import postgres from "postgres";
 import type { AgentMission, AgentRunPayload, ApprovalRecord, AuditEvent, ListingDryRunPayload } from "@/lib/runtime-contracts";
-import { createRuntimeId, runtimeHealth } from "@/lib/runtime-contracts";
+import { createAuditEvent, createRuntimeId, runtimeHealth } from "@/lib/runtime-contracts";
 import { notificationPolicy, retryAt, type NotificationAction, type NotificationDelivery } from "@/lib/notification-policy";
+import {
+  buildWeeklyMetricObservations,
+  currentWeekOf,
+  type WeeklyMetricObservation,
+  type WeeklyOwnerReview,
+  type WeeklyReviewCompletionInput
+} from "@/lib/weekly-review";
 import type { InquiryPayload, SupportPayload } from "@/lib/types";
 
 export type RuntimePersistenceReceipt = {
@@ -40,6 +47,7 @@ type DemoState = {
   queue: RuntimeQueueItem[];
   audit: AuditEvent[];
   notifications: NotificationDelivery[];
+  weeklyReviews: WeeklyOwnerReview[];
 };
 
 declare global {
@@ -49,9 +57,11 @@ declare global {
 const demoState = globalThis.__propertyPortalRuntimeState ??= {
   queue: [],
   audit: [],
-  notifications: []
+  notifications: [],
+  weeklyReviews: []
 };
 demoState.notifications ??= [];
+demoState.weeklyReviews ??= [];
 
 let sqlClient: postgres.Sql | undefined;
 
@@ -113,6 +123,47 @@ function notificationFromRow(row: Record<string, unknown>): NotificationDelivery
     acknowledgedAt: toIso(row.acknowledged_at as Date | string | null),
     acknowledgedBy: row.acknowledged_by ? String(row.acknowledged_by) : null,
     lastErrorCode: row.last_error_code ? String(row.last_error_code) : null,
+    createdAt: toIso(row.created_at as Date | string) as string,
+    updatedAt: toIso(row.updated_at as Date | string) as string
+  };
+}
+
+function dateOnly(value: Date | string | null | undefined) {
+  if (!value) return null;
+  return (value instanceof Date ? value.toISOString() : String(value)).slice(0, 10);
+}
+
+function weeklyObservationFromRow(row: Record<string, unknown>): WeeklyMetricObservation {
+  return {
+    id: String(row.id),
+    metricId: row.metric_id as WeeklyMetricObservation["metricId"],
+    label: String(row.label),
+    value: row.value_numeric === null || row.value_numeric === undefined ? null : Number(row.value_numeric),
+    unit: row.unit as WeeklyMetricObservation["unit"],
+    target: String(row.target),
+    status: row.status as WeeklyMetricObservation["status"],
+    source: row.source as WeeklyMetricObservation["source"],
+    evidenceRef: String(row.evidence_ref),
+    observedAt: toIso(row.observed_at as Date | string) as string
+  };
+}
+
+function weeklyReviewFromRow(row: Record<string, unknown>, observations: WeeklyMetricObservation[] = []): WeeklyOwnerReview {
+  return {
+    id: String(row.id),
+    weekOf: dateOnly(row.week_of as Date | string) as string,
+    status: row.status as WeeklyOwnerReview["status"],
+    startedAt: toIso(row.started_at as Date | string) as string,
+    completedAt: toIso(row.completed_at as Date | string | null),
+    durationMinutes: row.duration_minutes === null || row.duration_minutes === undefined ? null : Number(row.duration_minutes),
+    repeatedQuestionsTotal: row.repeated_questions_total === null || row.repeated_questions_total === undefined ? null : Number(row.repeated_questions_total),
+    repeatedQuestionsCovered: row.repeated_questions_covered === null || row.repeated_questions_covered === undefined ? null : Number(row.repeated_questions_covered),
+    knownVacancyDate: dateOnly(row.known_vacancy_date as Date | string | null),
+    listingReadyDate: dateOnly(row.listing_ready_date as Date | string | null),
+    keepNote: row.keep_note ? String(row.keep_note) : "",
+    changeNote: row.change_note ? String(row.change_note) : "",
+    stopNote: row.stop_note ? String(row.stop_note) : "",
+    observations,
     createdAt: toIso(row.created_at as Date | string) as string,
     updatedAt: toIso(row.updated_at as Date | string) as string
   };
@@ -766,6 +817,263 @@ export async function acknowledgeNotificationDelivery(id: string, acknowledgedBy
     });
   } catch {
     return { delivery: null, changed: false };
+  }
+}
+
+function urgentAcknowledgementMinutes(
+  deliveries: NotificationDelivery[],
+  startedAt: string,
+  completedAt: string
+) {
+  const values = deliveries
+    .filter((item) => (
+      item.urgency === "urgent" &&
+      item.acknowledgedAt &&
+      item.createdAt >= startedAt &&
+      item.createdAt <= completedAt
+    ))
+    .map((item) => (new Date(item.acknowledgedAt as string).valueOf() - new Date(item.createdAt).valueOf()) / 60_000)
+    .filter((value) => Number.isFinite(value) && value >= 0);
+  return values.length > 0 ? Math.round(Math.max(...values) * 10) / 10 : null;
+}
+
+export async function listWeeklyOwnerReviews(limit = 12): Promise<WeeklyOwnerReview[]> {
+  const boundedLimit = Math.max(1, Math.min(limit, 52));
+  const sql = getSql();
+  if (!sql) return demoState.weeklyReviews.slice(0, boundedLimit);
+
+  try {
+    return await withOrganizationContext(sql, async (scopedSql) => {
+      const rows = await scopedSql`
+        select *
+        from weekly_owner_reviews
+        where organization_id = ${organizationId()}
+        order by week_of desc, created_at desc
+        limit ${boundedLimit}
+      `;
+      const reviews: WeeklyOwnerReview[] = [];
+      for (const row of rows) {
+        const observationRows = await scopedSql`
+          select * from weekly_metric_observations
+          where organization_id = ${organizationId()} and weekly_review_id = ${String(row.id)}
+          order by observed_at, metric_id
+        `;
+        reviews.push(weeklyReviewFromRow(row, observationRows.map((item) => weeklyObservationFromRow(item))));
+      }
+      return reviews;
+    });
+  } catch {
+    throw new Error("Weekly owner review ledger unavailable.");
+  }
+}
+
+export async function startWeeklyOwnerReview(now = new Date()) {
+  const startedAt = now.toISOString();
+  const weekOf = currentWeekOf(now);
+  const sql = getSql();
+
+  if (!sql) {
+    const existing = demoState.weeklyReviews.find((item) => item.weekOf === weekOf);
+    if (existing) {
+      return {
+        review: existing,
+        changed: false,
+        persistence: { adapter: "demo-memory", status: "recorded", target: "process-memory", detail: "Returned the existing weekly review from demo memory." } as RuntimePersistenceReceipt
+      };
+    }
+    const review: WeeklyOwnerReview = {
+      id: createRuntimeId("weekly"),
+      weekOf,
+      status: "in-progress",
+      startedAt,
+      completedAt: null,
+      durationMinutes: null,
+      repeatedQuestionsTotal: null,
+      repeatedQuestionsCovered: null,
+      knownVacancyDate: null,
+      listingReadyDate: null,
+      keepNote: "",
+      changeNote: "",
+      stopNote: "",
+      observations: [],
+      createdAt: startedAt,
+      updatedAt: startedAt
+    };
+    demoState.weeklyReviews.unshift(review);
+    const auditEvent = createAuditEvent({
+      type: "weekly_review.started",
+      actorRole: "owner",
+      summary: `Weekly owner review started for ${weekOf}.`
+    });
+    demoState.audit.unshift(auditEvent);
+    return {
+      review,
+      changed: true,
+      persistence: { adapter: "demo-memory", status: "recorded", target: "process-memory", detail: "Recorded weekly review start in demo memory; this is not durable storage." } as RuntimePersistenceReceipt
+    };
+  }
+
+  try {
+    return await withOrganizationContext(sql, async (scopedSql) => {
+      const id = createRuntimeId("weekly");
+      const inserted = await scopedSql`
+        insert into weekly_owner_reviews (
+          id, organization_id, week_of, status, started_at, created_at, updated_at
+        ) values (
+          ${id}, ${organizationId()}, ${weekOf}, 'in-progress', ${startedAt}, ${startedAt}, ${startedAt}
+        )
+        on conflict (organization_id, week_of) do nothing
+        returning *
+      `;
+      const rows = inserted.length > 0 ? inserted : await scopedSql`
+        select * from weekly_owner_reviews
+        where organization_id = ${organizationId()} and week_of = ${weekOf}
+        limit 1
+      `;
+      if (!rows[0]) throw new Error("Weekly review start was not recorded.");
+      if (inserted.length > 0) {
+        await insertAudit(scopedSql, createAuditEvent({
+          type: "weekly_review.started",
+          actorRole: "owner",
+          summary: `Weekly owner review started for ${weekOf}.`
+        }), "weekly_owner_review", String(rows[0].id));
+      }
+      const review = weeklyReviewFromRow(rows[0]);
+      return {
+        review,
+        changed: inserted.length > 0,
+        persistence: { adapter: "postgres", status: "recorded", target: "weekly_owner_reviews", detail: inserted.length > 0 ? "Recorded a server-timestamped weekly review start." : "Returned the existing review for this week." } as RuntimePersistenceReceipt
+      };
+    });
+  } catch {
+    throw new Error("Weekly owner review start failed.");
+  }
+}
+
+export async function completeWeeklyOwnerReview(
+  id: string,
+  input: WeeklyReviewCompletionInput,
+  now = new Date()
+) {
+  const completedAt = now.toISOString();
+  const sql = getSql();
+
+  if (!sql) {
+    const review = demoState.weeklyReviews.find((item) => item.id === id);
+    if (!review) return { review: null, changed: false, persistence: failureReceipt("demo-memory", "weekly_owner_reviews") };
+    if (review.status === "completed") {
+      return { review, changed: false, persistence: { adapter: "demo-memory", status: "recorded", target: "process-memory", detail: "Weekly review was already completed." } as RuntimePersistenceReceipt };
+    }
+    const completedReview: WeeklyOwnerReview = {
+      ...review,
+      ...input,
+      status: "completed",
+      completedAt,
+      updatedAt: completedAt
+    };
+    const metrics = buildWeeklyMetricObservations({
+      review: completedReview,
+      urgentAcknowledgementMinutes: urgentAcknowledgementMinutes(demoState.notifications, review.startedAt, completedAt),
+      observedAt: completedAt,
+      createId: () => createRuntimeId("metric")
+    });
+    completedReview.durationMinutes = metrics.durationMinutes;
+    completedReview.observations = metrics.observations;
+    Object.assign(review, completedReview);
+    demoState.audit.unshift(createAuditEvent({
+      type: "weekly_review.completed",
+      actorRole: "owner",
+      summary: `Weekly owner review completed for ${review.weekOf} with ${metrics.observations.filter((item) => item.status === "met").length} targets met.`
+    }));
+    return {
+      review: completedReview,
+      changed: true,
+      persistence: { adapter: "demo-memory", status: "recorded", target: "process-memory", detail: "Recorded weekly review observations in demo memory; this is not durable storage." } as RuntimePersistenceReceipt
+    };
+  }
+
+  try {
+    return await withOrganizationContext(sql, async (scopedSql) => {
+      const rows = await scopedSql`
+        select * from weekly_owner_reviews
+        where organization_id = ${organizationId()} and id = ${id}
+        for update
+      `;
+      if (!rows[0]) return { review: null, changed: false, persistence: failureReceipt("postgres", "weekly_owner_reviews") };
+      const current = weeklyReviewFromRow(rows[0]);
+      if (current.status === "completed") {
+        const observationRows = await scopedSql`
+          select * from weekly_metric_observations
+          where organization_id = ${organizationId()} and weekly_review_id = ${id}
+          order by observed_at, metric_id
+        `;
+        current.observations = observationRows.map((row) => weeklyObservationFromRow(row));
+        return { review: current, changed: false, persistence: { adapter: "postgres", status: "recorded", target: "weekly_owner_reviews", detail: "Weekly review was already completed." } as RuntimePersistenceReceipt };
+      }
+
+      const acknowledgementRows = await scopedSql`
+        select max(extract(epoch from (acknowledged_at - created_at)) / 60.0)::float8 as minutes
+        from notification_deliveries
+        where organization_id = ${organizationId()}
+          and urgency = 'urgent'
+          and acknowledged_at is not null
+          and created_at >= ${current.startedAt}
+          and created_at <= ${completedAt}
+      `;
+      const urgentMinutes = acknowledgementRows[0]?.minutes === null || acknowledgementRows[0]?.minutes === undefined
+        ? null
+        : Math.round(Number(acknowledgementRows[0].minutes) * 10) / 10;
+      const completedReview: WeeklyOwnerReview = {
+        ...current,
+        ...input,
+        status: "completed",
+        completedAt,
+        updatedAt: completedAt
+      };
+      const metrics = buildWeeklyMetricObservations({
+        review: completedReview,
+        urgentAcknowledgementMinutes: urgentMinutes,
+        observedAt: completedAt,
+        createId: () => createRuntimeId("metric")
+      });
+      completedReview.durationMinutes = metrics.durationMinutes;
+      completedReview.observations = metrics.observations;
+
+      await scopedSql`
+        update weekly_owner_reviews
+        set status = 'completed', completed_at = ${completedAt}, duration_minutes = ${metrics.durationMinutes},
+            repeated_questions_total = ${input.repeatedQuestionsTotal},
+            repeated_questions_covered = ${input.repeatedQuestionsCovered},
+            known_vacancy_date = ${input.knownVacancyDate}, listing_ready_date = ${input.listingReadyDate},
+            keep_note = ${input.keepNote}, change_note = ${input.changeNote}, stop_note = ${input.stopNote},
+            updated_at = ${completedAt}
+        where organization_id = ${organizationId()} and id = ${id}
+      `;
+      for (const observation of metrics.observations) {
+        await scopedSql`
+          insert into weekly_metric_observations (
+            id, organization_id, weekly_review_id, metric_id, label, value_numeric,
+            unit, target, status, source, evidence_ref, observed_at
+          ) values (
+            ${observation.id}, ${organizationId()}, ${id}, ${observation.metricId}, ${observation.label},
+            ${observation.value}, ${observation.unit}, ${observation.target}, ${observation.status},
+            ${observation.source}, ${observation.evidenceRef}, ${observation.observedAt}
+          )
+        `;
+      }
+      await insertAudit(scopedSql, createAuditEvent({
+        type: "weekly_review.completed",
+        actorRole: "owner",
+        summary: `Weekly owner review completed for ${current.weekOf} with ${metrics.observations.filter((item) => item.status === "met").length} targets met.`
+      }), "weekly_owner_review", id);
+      return {
+        review: completedReview,
+        changed: true,
+        persistence: { adapter: "postgres", status: "recorded", target: "weekly_owner_reviews+weekly_metric_observations", detail: "Recorded the completed review and immutable metric observations in one transaction." } as RuntimePersistenceReceipt
+      };
+    });
+  } catch {
+    throw new Error("Weekly owner review completion failed.");
   }
 }
 

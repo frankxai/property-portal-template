@@ -33,6 +33,8 @@ alter table inquiries enable row level security;
 alter table support_tickets enable row level security;
 alter table notification_deliveries enable row level security;
 alter table notification_events enable row level security;
+alter table weekly_owner_reviews enable row level security;
+alter table weekly_metric_observations enable row level security;
 alter table approvals enable row level security;
 alter table agent_runs enable row level security;
 alter table agent_missions enable row level security;
@@ -52,6 +54,8 @@ alter table inquiries force row level security;
 alter table support_tickets force row level security;
 alter table notification_deliveries force row level security;
 alter table notification_events force row level security;
+alter table weekly_owner_reviews force row level security;
+alter table weekly_metric_observations force row level security;
 alter table approvals force row level security;
 alter table agent_runs force row level security;
 alter table agent_missions force row level security;
@@ -99,6 +103,18 @@ create policy notification_deliveries_tenant_isolation on notification_deliverie
 
 drop policy if exists notification_events_tenant_isolation on notification_events;
 create policy notification_events_tenant_isolation on notification_events
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists weekly_owner_reviews_tenant_isolation on weekly_owner_reviews;
+create policy weekly_owner_reviews_tenant_isolation on weekly_owner_reviews
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists weekly_metric_observations_tenant_isolation on weekly_metric_observations;
+create policy weekly_metric_observations_tenant_isolation on weekly_metric_observations
   for all
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());

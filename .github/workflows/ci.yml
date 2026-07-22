@@ -39,3 +39,6 @@ jobs:
       - name: Notification lifecycle smoke
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         run: npm run notification:smoke
+      - name: Weekly owner review smoke
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        run: npm run weekly:smoke

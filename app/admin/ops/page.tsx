@@ -1,6 +1,9 @@
 import { operatingCadence, releaseGates, successCriteria, tastePrinciples } from "@/lib/ops";
 import { StatusBadge } from "@/components/StatusBadge";
+import { WeeklyReviewConsole } from "@/components/WeeklyReviewConsole";
 import { requireOwnerAccess } from "@/lib/auth";
+import { listWeeklyOwnerReviews } from "@/lib/runtime-store";
+import type { WeeklyOwnerReview } from "@/lib/weekly-review";
 
 function GateBadge({ status }: { status: "required" | "ready" | "manual" }) {
   if (status === "ready") {
@@ -12,17 +15,26 @@ function GateBadge({ status }: { status: "required" | "ready" | "manual" }) {
 
 export default async function OpsPage() {
   await requireOwnerAccess("/admin/ops");
+  let weeklyReviews: WeeklyOwnerReview[] = [];
+  let weeklyReviewError = "";
+  try {
+    weeklyReviews = await listWeeklyOwnerReviews(12);
+  } catch {
+    weeklyReviewError = "Weekly evidence is unavailable. Keep the manual review route active until storage recovers.";
+  }
 
   return (
     <main className="page">
       <div className="shell">
         <section className="work-header">
           <span className="eyebrow">Operating system</span>
-          <h1 className="page-title">Run the property like a premium front desk, with owner approval at the center.</h1>
+          <h1 className="page-title">A measured operating rhythm for every property.</h1>
           <p className="lede">
-            This page turns the template into a repeatable operating rhythm: success criteria, cadence, release gates, and taste checks in one owner-facing view.
+            Start the weekly review, record what changed, and leave an honest evidence trail before the next owner decision.
           </p>
         </section>
+
+        <WeeklyReviewConsole initialReviews={weeklyReviews} initialError={weeklyReviewError} />
 
         <section className="grid">
           {successCriteria.map((item) => (

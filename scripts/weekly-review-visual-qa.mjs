@@ -1,0 +1,160 @@
+import { spawn } from "node:child_process";
+import { access, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright-core";
+
+const port = Number(process.env.WEEKLY_REVIEW_VISUAL_QA_PORT ?? 3217);
+const baseUrl = `http://127.0.0.1:${port}`;
+const route = "/admin/ops";
+const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+const artifactDir = path.join(process.cwd(), "artifacts", "visual-qa");
+const isWindows = process.platform === "win32";
+const browserCandidates = [
+  process.env.PLAYWRIGHT_CHROME_PATH,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium"
+].filter(Boolean);
+
+async function browserPath() {
+  for (const candidate of browserCandidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Try the next known browser path.
+    }
+  }
+  throw new Error("No supported local Chrome or Edge executable found. Set PLAYWRIGHT_CHROME_PATH.");
+}
+
+const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
+  cwd: process.cwd(),
+  env: { ...process.env, PORT: String(port), APP_BASE_URL: baseUrl, PROPERTY_OS_DEMO_AUTH: "true" },
+  stdio: ["ignore", "pipe", "pipe"]
+});
+let serverOutput = "";
+server.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
+server.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
+
+async function stopServer() {
+  if (server.exitCode !== null) return;
+  if (isWindows && server.pid) {
+    const killer = spawn("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
+    await new Promise((resolve) => killer.once("exit", resolve));
+  } else {
+    server.kill("SIGTERM");
+  }
+}
+
+async function waitForServer() {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (server.exitCode !== null) throw new Error(`next start exited early.\n${serverOutput}`);
+    try {
+      const response = await fetch(`${baseUrl}${route}`);
+      if (response.ok) return;
+    } catch {
+      // Keep polling.
+    }
+    await sleep(400);
+  }
+  throw new Error(`Timed out waiting for ${baseUrl}.\n${serverOutput}`);
+}
+
+async function seedCompletedReview() {
+  const startResponse = await fetch(`${baseUrl}/api/weekly-reviews`, { method: "POST" });
+  if (!startResponse.ok) throw new Error(`Weekly review visual start returned ${startResponse.status}`);
+  const started = await startResponse.json();
+  const completeResponse = await fetch(`${baseUrl}/api/weekly-reviews/${started.review.id}/complete`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      repeatedQuestionsTotal: 10,
+      repeatedQuestionsCovered: 8,
+      listingReadyDate: "2026-08-01",
+      knownVacancyDate: "2026-09-15",
+      keepNote: "Keep the approved arrival guide visible before move-in.",
+      changeNote: "Move the recurring utilities answer into approved self-service content.",
+      stopNote: "Stop answering repeated Wi-Fi questions manually."
+    })
+  });
+  if (!completeResponse.ok) throw new Error(`Weekly review visual completion returned ${completeResponse.status}`);
+}
+
+async function inspect(page, name, viewport) {
+  await page.setViewportSize(viewport);
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+  await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "A measured operating rhythm for every property." }).waitFor();
+  await page.getByRole("heading", { name: "Review evidence" }).waitFor();
+
+  const operationsMenu = page.locator(".nav-menu summary");
+  await operationsMenu.click();
+  const menuBox = await page.locator(".nav-menu-panel").boundingBox();
+  if (!menuBox || menuBox.x < 0 || menuBox.y < 0 || menuBox.x + menuBox.width > viewport.width + 1 || menuBox.y + menuBox.height > viewport.height + 1) {
+    throw new Error(`${name} operations menu escaped the viewport: ${JSON.stringify(menuBox)}`);
+  }
+  await operationsMenu.click();
+
+  const layout = await page.evaluate(() => {
+    const root = document.documentElement;
+    const required = [".weekly-review-console", ".weekly-review-record", ".weekly-metric-grid", ".weekly-decisions"];
+    const missing = required.filter((selector) => !document.querySelector(selector));
+    const clippedText = [...document.querySelectorAll("h1, h2, h3, p, strong, button, dt, dd, small, .status")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return style.display !== "none" && rect.width > 0 && (rect.right > root.clientWidth + 1 || rect.left < -1);
+      })
+      .map((element) => element.textContent?.trim().slice(0, 90))
+      .filter(Boolean);
+    return {
+      viewportWidth: root.clientWidth,
+      scrollWidth: root.scrollWidth,
+      overflowPixels: Math.max(0, root.scrollWidth - root.clientWidth),
+      missing,
+      clippedText
+    };
+  });
+
+  const primaryNavigation = await page.locator(".nav-links").evaluate((element) => ({
+    scrollLeft: element.scrollLeft,
+    scrollWidth: element.scrollWidth,
+    clientWidth: element.clientWidth
+  }));
+  layout.primaryNavigation = primaryNavigation;
+
+  if (
+    layout.overflowPixels > 1 ||
+    layout.missing.length > 0 ||
+    layout.clippedText.length > 0 ||
+    (name === "mobile" && (primaryNavigation.scrollLeft !== 0 || primaryNavigation.scrollWidth > primaryNavigation.clientWidth + 1))
+  ) {
+    throw new Error(`${name} layout failed: ${JSON.stringify(layout)}`);
+  }
+
+  const screenshot = path.join(artifactDir, `weekly-review-${name}.png`);
+  await page.screenshot({ path: screenshot, fullPage: true });
+  return { name, screenshot, ...layout };
+}
+
+let browser;
+try {
+  await mkdir(artifactDir, { recursive: true });
+  await waitForServer();
+  await seedCompletedReview();
+  browser = await chromium.launch({ executablePath: await browserPath(), headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const evidence = [];
+  evidence.push(await inspect(page, "desktop", { width: 1440, height: 1200 }));
+  evidence.push(await inspect(page, "mobile", { width: 390, height: 844 }));
+  console.log(JSON.stringify({ route, evidence }, null, 2));
+} finally {
+  await browser?.close();
+  await stopServer();
+}

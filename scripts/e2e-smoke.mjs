@@ -237,6 +237,12 @@ try {
     "Owner acknowledgement queue",
     "No notification receipts exist yet"
   ]);
+  await expectPageContains("/admin/ops", [
+    "A measured operating rhythm for every property.",
+    "Weekly owner review",
+    "Start this week",
+    "No timer is running."
+  ]);
 
   await expectGovernedWriteLocked("/api/approved-evidence", {
     ref: "property:urban-haven-sample:profile",

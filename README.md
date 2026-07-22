@@ -33,7 +33,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/admin/control-center`: specialist missions, authority boundary, runtime posture, lifecycle, and outcome scorecard
 - `/admin/agent-workbench`: approved-evidence, structured-draft, immutable-proof, and owner-review workflow
 - `/admin/agent-runs`: owner-reviewed agent run ledger
-- `/admin/ops`: operating cadence, success criteria, and release gates
+- `/admin/ops`: server-timestamped weekly review, metric evidence, operating cadence, and release gates
 
 ## Setup
 
@@ -46,6 +46,8 @@ npm run build
 npm run smoke
 npm run auth:smoke
 npm run notification:smoke
+npm run weekly:smoke
+npm run weekly:visual
 npm run visual:qa
 npm run audit
 npm run install:proof
@@ -57,7 +59,7 @@ npm run db:rls:smoke
 
 The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions use a demo in-memory store by default and switch to the Postgres adapter when `DATABASE_URL` is configured. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues or notification workers.
 
-The first portal schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, portal agent runs, agent missions, transition proposals, approval receipts, controlled transitions, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
+The first portal schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, notifications, weekly owner reviews, immutable metric observations, approvals, portal agent runs, agent missions, transition proposals, approval receipts, controlled transitions, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
 
 Production uses two tenant-isolated logical databases and separate runtime roles: this portal database on Vercel and the governed control-plane ledger on Railway. Never point both `DATABASE_URL` values at the same logical database; the authenticated MCP API is the boundary between them.
 
@@ -77,7 +79,7 @@ Production database order for a fresh install:
 4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
 5. Verify `/admin/runtime` in the deployed preview before real renter data.
 
-Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql`, rerun `db/rls.sql`, and rerun `npm run db:rls:smoke` before enabling the notification worker.
+Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql` and `db/003-weekly-owner-review.sql` in order, rerun `db/rls.sql`, and rerun `npm run db:rls:smoke` before enabling production workflows.
 
 ## Implementation Cockpit
 
@@ -105,6 +107,10 @@ Generate the upstream configuration packet in `property-os-template` with `npm r
 
 Notifications use a durable tenant-scoped outbox and append-only event ledger. A separately authenticated worker sends HMAC-signed, sanitized webhooks, retries with bounded backoff, triggers the fallback route when urgent acknowledgement is late, and exposes evidence at `/admin/notifications`. See `docs/notification-lifecycle.md` and run `npm run notification:smoke` after the production build.
 
+## Weekly Evidence
+
+The protected `/admin/ops` workflow records one review per organization and UTC week, derives review duration and urgent acknowledgement from server evidence, accepts bounded FAQ and vacancy inputs, and stores five explicit `met`, `not-met`, or `unmeasured` observations. Completion is idempotent and performs no external action. See `docs/weekly-owner-review.md`.
+
 ## V1 Safety
 
 - Static portal answers approved facts.
@@ -131,6 +137,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 - `docs/portal-scene-brief.md`
 - `docs/agent-control-center-spec.md`
 - `docs/agent-workbench-spec.md`
+- `docs/weekly-owner-review.md`
 - `docs/product-roadmap.md`
 - `docs/production-hardening.md`
 - `docs/v0-implementation-brief.md`

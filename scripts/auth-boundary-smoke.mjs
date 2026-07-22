@@ -74,8 +74,16 @@ try {
   await expectStatus("/owner", 307);
   await expectStatus("/admin/agent-workbench", 307);
   await expectStatus("/admin/notifications", 307);
+  await expectStatus("/admin/ops", 307);
   await expectStatus("/api/runtime/snapshot", 401);
   await expectStatus("/api/notifications", 401);
+  await expectStatus("/api/weekly-reviews", 401);
+  await expectStatus("/api/weekly-reviews", 401, { method: "POST" });
+  await expectStatus("/api/weekly-reviews/weekly-auth-boundary/complete", 401, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
   await expectStatus("/api/notifications/process", 503, { method: "POST" });
   await expectStatus("/api/approved-evidence", 401, {
     method: "POST",
@@ -117,6 +125,9 @@ try {
     headers: { cookie }
   });
   await expectStatus("/admin/notifications", 200, {
+    headers: { cookie }
+  });
+  await expectStatus("/admin/ops", 200, {
     headers: { cookie }
   });
 

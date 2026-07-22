@@ -35,7 +35,7 @@ Production installs should:
 9. configure the MCP endpoint, origin, and access token backed by a separate control-plane logical database, then run `npm run mcp:smoke`
 10. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
 
-Existing databases also apply `db/002-notification-lifecycle.sql`, rerun `db/rls.sql`, and rerun the live RLS smoke.
+Existing databases also apply `db/002-notification-lifecycle.sql` and `db/003-weekly-owner-review.sql` in order, rerun `db/rls.sql`, and rerun the live RLS smoke.
 
 The adapter writes:
 
@@ -45,6 +45,7 @@ The adapter writes:
 - agent runs to `agent_runs`
 - agent missions, approved evidence, structured model runs, resource versions, approval receipts, and controlled transitions through the MCP service and its separate database
 - listing dry-runs and write traces to `audit_events`
+- weekly review timing, decisions, and metric observations to `weekly_owner_reviews` and `weekly_metric_observations`
 
 Private renter messages, emails, and support details belong only in runtime storage. Public repos and GitHub issues receive sanitized summaries.
 
@@ -102,6 +103,12 @@ They do not include access secrets, payment data, private addresses, identity do
 
 Use `/admin/notifications` to inspect delivery evidence and acknowledge an item. Acknowledgement stops retries and records an append-only event; it never sends a reply or dispatches work. See `docs/notification-lifecycle.md`.
 
+## Weekly Owner Evidence
+
+`/admin/ops` starts one server-timestamped review per organization and UTC week. Completion atomically stores the owner's bounded inputs, Keep / Change / Stop decisions, five metric observations, and an audit event. A repeated completion returns the original evidence instead of rewriting history.
+
+The urgent acknowledgement metric uses the slowest acknowledged urgent notification created inside the review window. With no qualifying receipt it remains `unmeasured`. The zero unauthorized-action metric is a policy observation over the portal's governed action surface only; it is not telemetry for disconnected tools. See `docs/weekly-owner-review.md`.
+
 ## Production Gates
 
 Do not put real renter data through the portal until:
@@ -115,6 +122,7 @@ Do not put real renter data through the portal until:
 - backups are enabled
 - owner notification failure path is tested
 - `npm run notification:smoke` passes and the deployed primary/fallback provider receipts are archived
+- `npm run weekly:smoke` passes and one owner-reviewed live observation packet is archived
 - Vercel preview is reviewed
 - support ownership is explicit
 
