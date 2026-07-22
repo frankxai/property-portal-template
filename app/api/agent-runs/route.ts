@@ -13,7 +13,7 @@ const roles: AgentRole[] = agentTeam.map((profile) => profile.id);
 const risks: ApprovalRisk[] = ["low", "medium", "high", "owner-required"];
 
 export async function POST(request: Request) {
-  const denied = await requireOwnerApiAccess(request);
+  const denied = await requireOwnerApiAccess(request, "operations:write");
   if (denied) return denied;
   const controlPlane = controlPlaneConfiguration();
   if (controlPlane.configured) {

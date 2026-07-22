@@ -1,27 +1,27 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { NextResponse } from "next/server";
+import type { OwnerRole } from "@/lib/identity-policy";
+import { ownerAuthStatus, type OwnerAuthMode, type OwnerAuthStatus } from "@/lib/auth-configuration";
+import { ownerRoleHasCapability, type OwnerCapability } from "@/lib/owner-capabilities";
+
+export { oidcAuthEnv, ownerAuthStatus, staticPrivatePilotAuthEnv } from "@/lib/auth-configuration";
+export type { OwnerAuthMode, OwnerAuthStatus } from "@/lib/auth-configuration";
 
 const ownerSessionCookie = "property_os_owner_session";
 const sessionMaxAgeSeconds = 60 * 60 * 8;
 
-export type OwnerAuthMode = "passcode" | "demo-open" | "locked";
-
-export type OwnerAuthStatus = {
-  mode: OwnerAuthMode;
-  configured: boolean;
-  productionSafe: boolean;
-  missingEnv: string[];
-  detail: string;
-};
-
 export type OwnerAccess = {
   ok: boolean;
-  role: "owner" | "operator";
-  mode: OwnerAuthMode | "api-token";
+  role: OwnerRole | "operator";
+  actorId: string | null;
+  mode: OwnerAuthMode;
   status: OwnerAuthStatus;
 };
+
+const passcodeAttempts = new Map<string, { count: number; resetAt: number }>();
 
 function secret() {
   return process.env.OWNER_PORTAL_SECRET || "";
@@ -31,16 +31,8 @@ function passcodeHash() {
   return process.env.OWNER_PORTAL_PASSCODE_HASH || "";
 }
 
-function apiToken() {
-  return process.env.OWNER_PORTAL_API_TOKEN || "";
-}
-
 function notificationWorkerToken() {
   return process.env.OWNER_NOTIFICATION_WORKER_TOKEN || "";
-}
-
-function demoAuthAllowed() {
-  return process.env.PROPERTY_OS_DEMO_AUTH === "true" || (process.env.NODE_ENV !== "production" && !secret() && !passcodeHash());
 }
 
 function safePath(path: string | null | undefined) {
@@ -48,41 +40,6 @@ function safePath(path: string | null | undefined) {
     return "/owner";
   }
   return path;
-}
-
-export function ownerAuthStatus(): OwnerAuthStatus {
-  const missingEnv = [
-    !secret() ? "OWNER_PORTAL_SECRET" : "",
-    !passcodeHash() ? "OWNER_PORTAL_PASSCODE_HASH" : ""
-  ].filter(Boolean);
-
-  if (!missingEnv.length) {
-    return {
-      mode: "passcode",
-      configured: true,
-      productionSafe: true,
-      missingEnv,
-      detail: "Owner passcode auth is configured. Browser sessions use signed, HttpOnly cookies."
-    };
-  }
-
-  if (demoAuthAllowed()) {
-    return {
-      mode: "demo-open",
-      configured: false,
-      productionSafe: false,
-      missingEnv,
-      detail: "Demo owner access is open for local smoke tests. Do not use this mode with real renter data."
-    };
-  }
-
-  return {
-    mode: "locked",
-    configured: false,
-    productionSafe: false,
-    missingEnv,
-    detail: "Owner/admin access is locked until OWNER_PORTAL_SECRET and OWNER_PORTAL_PASSCODE_HASH are configured."
-  };
 }
 
 export function createPasscodeHash(passcode: string, signingSecret = secret()) {
@@ -104,6 +61,33 @@ export function verifyOwnerPasscode(passcode: string) {
   }
 
   return safeEqual(createPasscodeHash(passcode), passcodeHash());
+}
+
+export function mutationOriginError(request: Request) {
+  if (["GET", "HEAD", "OPTIONS"].includes(request.method.toUpperCase())) return null;
+  const origin = request.headers.get("origin");
+  let expectedOrigin: string;
+  try {
+    expectedOrigin = new URL(process.env.APP_BASE_URL || request.url).origin;
+  } catch {
+    return "The configured application origin is invalid.";
+  }
+  if (!origin || origin !== expectedOrigin) return "The request origin was not approved.";
+  return null;
+}
+
+export function consumePasscodeAttempt(request: Request) {
+  const forwarded = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim();
+  const key = forwarded || request.headers.get("x-real-ip") || "unknown";
+  const now = Date.now();
+  const existing = passcodeAttempts.get(key);
+  if (!existing || existing.resetAt <= now) {
+    passcodeAttempts.set(key, { count: 1, resetAt: now + 15 * 60_000 });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  existing.count += 1;
+  if (existing.count <= 5) return { allowed: true, retryAfterSeconds: 0 };
+  return { allowed: false, retryAfterSeconds: Math.max(1, Math.ceil((existing.resetAt - now) / 1000)) };
 }
 
 function signSession(expiresAt: number) {
@@ -136,16 +120,40 @@ function verifyOwnerSessionValue(value: string | undefined) {
 export async function ownerAccessFromCookies(): Promise<OwnerAccess> {
   const status = ownerAuthStatus();
   if (status.mode === "demo-open") {
-    return { ok: true, role: "owner", mode: "demo-open", status };
+    return { ok: true, role: "owner", actorId: "local-demo-owner", mode: "demo-open", status };
+  }
+
+  if (status.mode === "oidc") {
+    try {
+      const { getOidcAuth, oidcMembershipForUser } = await import("@/lib/oidc-auth");
+      const session = await getOidcAuth().api.getSession({
+        headers: await headers(),
+        query: { disableCookieCache: true }
+      });
+      if (session?.user?.id) {
+        const membership = await oidcMembershipForUser(session.user.id);
+        if (membership) {
+          return {
+            ok: true,
+            role: membership.role,
+            actorId: `oidc:${membership.subject}`,
+            mode: "oidc",
+            status
+          };
+        }
+      }
+    } catch {
+      // Authentication failures remain indistinguishable at the public boundary.
+    }
   }
 
   const cookieStore = await cookies();
   const session = cookieStore.get(ownerSessionCookie)?.value;
-  if (status.mode === "passcode" && verifyOwnerSessionValue(session)) {
-    return { ok: true, role: "owner", mode: "passcode", status };
+  if (status.mode === "static-private-pilot" && verifyOwnerSessionValue(session)) {
+    return { ok: true, role: "owner", actorId: "private-pilot-owner", mode: "static-private-pilot", status };
   }
 
-  return { ok: false, role: "owner", mode: status.mode, status };
+  return { ok: false, role: "owner", actorId: null, mode: status.mode, status };
 }
 
 export async function requireOwnerAccess(nextPath = "/owner") {
@@ -157,18 +165,20 @@ export async function requireOwnerAccess(nextPath = "/owner") {
   redirect(`/admin/sign-in?next=${encodeURIComponent(safePath(nextPath))}`);
 }
 
-export async function requireOwnerApiAccess(request: Request) {
+export async function requireOwnerApiAccess(request: Request, capability: OwnerCapability) {
   const status = ownerAuthStatus();
-  const authHeader = request.headers.get("authorization") || "";
-  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
-
-  if (apiToken() && safeEqual(bearer, apiToken())) {
-    return null;
+  const originError = mutationOriginError(request);
+  if (originError) {
+    return NextResponse.json({ error: originError }, { status: 403 });
   }
 
   const access = await ownerAccessFromCookies();
-  if (access.ok) {
+  if (access.ok && ownerRoleHasCapability(access.role, capability)) {
     return null;
+  }
+
+  if (access.ok) {
+    return NextResponse.json({ error: "This owner role cannot perform the requested operation." }, { status: 403 });
   }
 
   return NextResponse.json(
@@ -178,7 +188,8 @@ export async function requireOwnerApiAccess(request: Request) {
         mode: status.mode,
         configured: status.configured,
         productionSafe: status.productionSafe,
-        missingEnv: status.missingEnv
+        missingEnv: status.missingEnv,
+        invalidEnv: status.invalidEnv
       }
     },
     { status: status.mode === "locked" ? 503 : 401 }

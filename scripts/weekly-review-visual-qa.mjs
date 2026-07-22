@@ -4,9 +4,12 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { authenticateBrowserContext, createTestOwnerAuth, signInTestOwner } from "./test-owner-auth.mjs";
 
 const port = Number(process.env.WEEKLY_REVIEW_VISUAL_QA_PORT ?? 3217);
 const baseUrl = `http://127.0.0.1:${port}`;
+const testOwner = createTestOwnerAuth(baseUrl);
+let ownerCookie = "";
 const route = "/admin/ops";
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
 const artifactDir = path.join(process.cwd(), "artifacts", "visual-qa");
@@ -34,7 +37,7 @@ async function browserPath() {
 
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
   cwd: process.cwd(),
-  env: { ...process.env, PORT: String(port), APP_BASE_URL: baseUrl, PROPERTY_OS_DEMO_AUTH: "true" },
+  env: { ...process.env, PORT: String(port), ...testOwner.env },
   stdio: ["ignore", "pipe", "pipe"]
 });
 let serverOutput = "";
@@ -66,12 +69,15 @@ async function waitForServer() {
 }
 
 async function seedCompletedReview() {
-  const startResponse = await fetch(`${baseUrl}/api/weekly-reviews`, { method: "POST" });
+  const startResponse = await fetch(`${baseUrl}/api/weekly-reviews`, {
+    method: "POST",
+    headers: { cookie: ownerCookie, origin: baseUrl }
+  });
   if (!startResponse.ok) throw new Error(`Weekly review visual start returned ${startResponse.status}`);
   const started = await startResponse.json();
   const completeResponse = await fetch(`${baseUrl}/api/weekly-reviews/${started.review.id}/complete`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", cookie: ownerCookie, origin: baseUrl },
     body: JSON.stringify({
       repeatedQuestionsTotal: 10,
       repeatedQuestionsCovered: 8,
@@ -146,9 +152,11 @@ let browser;
 try {
   await mkdir(artifactDir, { recursive: true });
   await waitForServer();
+  ownerCookie = await signInTestOwner(baseUrl, testOwner.passcode);
   await seedCompletedReview();
   browser = await chromium.launch({ executablePath: await browserPath(), headless: true });
   const context = await browser.newContext();
+  await authenticateBrowserContext(context, baseUrl, testOwner.passcode);
   const page = await context.newPage();
   const evidence = [];
   evidence.push(await inspect(page, "desktop", { width: 1440, height: 1200 }));

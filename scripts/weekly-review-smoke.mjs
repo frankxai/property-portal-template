@@ -2,15 +2,18 @@ import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { createTestOwnerAuth, signInTestOwner } from "./test-owner-auth.mjs";
 
 const port = Number(process.env.WEEKLY_REVIEW_SMOKE_PORT ?? 3216);
 const baseUrl = `http://127.0.0.1:${port}`;
 const isWindows = process.platform === "win32";
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+const testOwner = createTestOwnerAuth(baseUrl);
+let ownerCookie = "";
 
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
   cwd: process.cwd(),
-  env: { ...process.env, PORT: String(port), PROPERTY_OS_DEMO_AUTH: "true" },
+  env: { ...process.env, PORT: String(port), ...testOwner.env },
   stdio: ["ignore", "pipe", "pipe"]
 });
 
@@ -46,13 +49,18 @@ async function waitForServer() {
 async function post(path, body) {
   return fetch(`${baseUrl}${path}`, {
     method: "POST",
-    headers: body === undefined ? undefined : { "content-type": "application/json" },
+    headers: {
+      cookie: ownerCookie,
+      origin: baseUrl,
+      ...(body === undefined ? {} : { "content-type": "application/json" })
+    },
     body: body === undefined ? undefined : JSON.stringify(body)
   });
 }
 
 try {
   await waitForServer();
+  ownerCookie = await signInTestOwner(baseUrl, testOwner.passcode);
 
   const firstStart = await post("/api/weekly-reviews");
   assert.equal(firstStart.status, 200);
@@ -121,7 +129,7 @@ try {
   assert.equal(replayedCompletion.changed, false);
   assert.equal(replayedCompletion.review.repeatedQuestionsTotal, 10);
 
-  const list = await fetch(`${baseUrl}/api/weekly-reviews`, { cache: "no-store" });
+  const list = await fetch(`${baseUrl}/api/weekly-reviews`, { cache: "no-store", headers: { cookie: ownerCookie } });
   assert.equal(list.status, 200);
   const ledger = await list.json();
   assert.equal(ledger.reviews.length, 1);

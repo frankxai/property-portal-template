@@ -13,6 +13,7 @@ const notificationWorkerSource = await readFile(path.join(process.cwd(), "lib", 
 const notificationStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
 const weeklyReviewSource = await readFile(path.join(process.cwd(), "lib", "weekly-review.ts"), "utf8");
 const authSource = await readFile(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
+const authConfigurationSource = await readFile(path.join(process.cwd(), "lib", "auth-configuration.ts"), "utf8");
 const schemaSource = await readFile(path.join(process.cwd(), "db", "schema.sql"), "utf8");
 const rlsSource = await readFile(path.join(process.cwd(), "db", "rls.sql"), "utf8");
 const seedSource = await readFile(path.join(process.cwd(), "db", "seed-sample.sql"), "utf8");
@@ -105,8 +106,9 @@ const requiredRuntimeSnippets = [
   "createListingDryRun",
   "notificationMode",
   "capabilities",
-  "OWNER_PORTAL_SECRET",
-  "OWNER_PORTAL_PASSCODE_HASH"
+  "ownerAuthStatus",
+  "staticPrivatePilotAuthEnv",
+  "oidcAuthEnv"
 ];
 
 const requiredImplementationSnippets = [
@@ -134,6 +136,9 @@ const requiredRuntimeStoreSnippets = [
   "runtimeSnapshot",
   "persistInquiry",
   "persistSupport",
+  "persistInquiryIntake",
+  "persistSupportIntake",
+  "demoRuntimeAllowed",
   "persistApproval",
   "persistAgentRun",
   "persistAgentMission",
@@ -150,12 +155,23 @@ const requiredRuntimeStoreSnippets = [
 const requiredAuthSnippets = [
   "requireOwnerAccess",
   "requireOwnerApiAccess",
+  "ownerRoleHasCapability",
+  "mutationOriginError",
   "OWNER_PORTAL_SECRET",
   "OWNER_PORTAL_PASSCODE_HASH",
-  "PROPERTY_OS_DEMO_AUTH",
   "ownerSessionCookie",
   "requireNotificationWorkerAccess",
   "OWNER_NOTIFICATION_WORKER_TOKEN"
+];
+
+const requiredAuthConfigurationSnippets = [
+  "PROPERTY_OS_AUTH_MODE",
+  "PROPERTY_OS_DEMO_AUTH",
+  "PROPERTY_OS_OIDC_AUTHORIZATION_URL",
+  "PROPERTY_OS_OIDC_TOKEN_URL",
+  "PROPERTY_OS_OIDC_JWKS_URL",
+  "BETTER_AUTH_SECRET must be at least 32 random base64url bytes",
+  "Production always locks"
 ];
 
 const requiredControlPlaneSnippets = [
@@ -328,17 +344,19 @@ const requiredNotificationWorkerSnippets = [
 const requiredAuthSmokeSnippets = [
   "OWNER_PORTAL_SECRET",
   "OWNER_PORTAL_PASSCODE_HASH",
-  "OWNER_PORTAL_API_TOKEN",
+  "rejectedLegacyBearer",
   "/api/runtime/snapshot",
   "property_os_owner_session"
 ];
 
 const requiredInstallProofCliSnippets = [
-  "OWNER_PORTAL_SECRET",
-  "OWNER_PORTAL_PASSCODE_HASH",
+  "staticPrivatePilotAuthEnv",
+  "oidcAuthEnv",
+  "controlPlaneConfiguration",
   "app/api/install/proof-packet/route.ts",
   "does not print secret values",
   "npm run db:rls:smoke",
+  "npm run identity:db:smoke",
   "npm run notification:smoke",
   "notificationBoundary",
   "separate tenant-isolated logical databases"
@@ -503,6 +521,12 @@ for (const [name, routeSource] of [
 for (const snippet of requiredAuthSnippets) {
   if (!authSource.includes(snippet)) {
     throw new Error(`lib/auth.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredAuthConfigurationSnippets) {
+  if (!authConfigurationSource.includes(snippet)) {
+    throw new Error(`lib/auth-configuration.ts is missing ${snippet}`);
   }
 }
 

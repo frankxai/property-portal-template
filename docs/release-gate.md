@@ -7,6 +7,7 @@ Before preview:
 - `npm run build`
 - `npm run smoke`
 - `npm run auth:smoke`
+- `npm run identity:smoke`
 - `npm run visual:qa`
 - `npm run audit`
 - `npm run install:proof`
@@ -23,6 +24,8 @@ Before production:
 - Vercel preview inspected
 - control-center mission create flow inspected and persistence mode understood
 - production Postgres schema and RLS reapplied for v0.2 control tables
+- explicit auth mode selected; agency installs have pre-bound membership, pinned endpoints, real IdP callback/revocation evidence, and passing identity database smoke
+- runtime database role is `NOSUPERUSER NOBYPASSRLS` and does not own tenant RLS tables
 - Railway MCP OIDC, Origin allowlist, health, readiness, and authority tests verified if hosted MCP is enabled
 
 Blocked release examples:
@@ -33,3 +36,4 @@ Blocked release examples:
 - broken inquiry or support form
 - text overlap on mobile
 - generic imagery for a real property launch
+- missing auth mode, unbound agency member, ambiguous IdP role, global owner bearer, or unproven real-provider callback

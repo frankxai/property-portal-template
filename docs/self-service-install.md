@@ -11,11 +11,7 @@ Start in `property-os-template` with `npm run install:plan -- --config <public-s
 - `/api/install/proof-packet`: protected JSON contract for partner audits and onboarding automation.
 - `npm run install:proof`: local CLI export of the same installation evidence; it does not print secret values.
 
-Use an owner session or trusted automation token for the API:
-
-```bash
-curl -H "Authorization: Bearer $OWNER_PORTAL_API_TOKEN" /api/install/proof-packet
-```
+Use an authenticated owner browser session for the API. The portal intentionally has no global owner automation bearer; partner automation should consume the local CLI packet or the governed MCP boundary.
 
 ## 45-Minute Community Fork Path
 
@@ -37,6 +33,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run identity:smoke
 npm run notification:smoke
 npm run weekly:smoke
 npm run weekly:visual
@@ -62,13 +59,17 @@ Production requires more than a green build. The minimum gates are:
 
 - replace all sample property data with approved owner facts
 - confirm photo rights and public address policy
-- configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
-- run `npm run auth:hash` for the private owner passcode
+- set `PROPERTY_OS_AUTH_MODE` explicitly; use `static-private-pilot` only for one trusted owner or the pre-bound `oidc` path for an agency
+- run `npm run auth:hash` only for the private owner pilot
 - create a dedicated portal logical database and role; apply `db/schema.sql`, then `db/rls.sql`, then a private seed
+- ensure the portal runtime role is `NOSUPERUSER NOBYPASSRLS`, does not own RLS tables, and is separate from the migration role
 - set `PROPERTY_OS_ORG_ID` for the target organization
+- for an existing database, apply `db/004-tenant-oidc.sql` after migrations 002 and 003
+- for agency OIDC, pin authorization/token/JWKS endpoints, bind every reviewed member with `property_os_bind_oidc_member`, and set `PROPERTY_OS_EXPECTED_OIDC_SUBJECTS`
+- run `npm run identity:smoke`; agency installs also run `npm run identity:db:smoke` and one real IdP callback/revocation flow in preview
 - run `npm run db:rls:smoke` against the live database
 - create a separate control-plane logical database and role; never point Vercel and Railway at the same logical database
-- deploy the Property OS MCP service, set `MCP_SERVER_URL`, `MCP_SERVER_ACCESS_TOKEN`, and `MCP_SERVER_ORIGIN`, and verify its durable `/readyz` state
+- deploy the Property OS MCP service, set `MCP_SERVER_URL`, `MCP_SERVER_AUTH_MODE`, and `MCP_SERVER_ORIGIN`, then use a static token only for the private pilot or short-lived client credentials for an agency; verify durable `/readyz`
 - apply MCP migrations `001-control-plane.sql` and `002-governed-agent-runtime.sql` in order to the control-plane database
 - configure the MCP service model alias and AI Gateway secret on Railway, never in Vercel portal variables
 - run `npm run mcp:smoke`; a configured MCP failure must return `503` without local mission, evidence, draft, or review fallback
@@ -82,7 +83,7 @@ Production requires more than a green build. The minimum gates are:
 - complete desktop and mobile preview QA
 - keep legal, pricing, availability, access, repair, payment, lease, refund, and listing publication decisions under owner approval
 
-Static passcode auth is for a private single-tenant pilot. An agency deployment remains implementation-blocked until OIDC, organization membership, role mapping, session revocation, and access tests are live and proven.
+Static passcode auth is for a private single-owner pilot. Agency code is implemented but deployment remains blocked until the target IdP callback, pre-bound membership, role denials, fixed session expiry, atomic revocation, runtime database role, and RLS tests are live and proven.
 
 ## Business Handoff
 

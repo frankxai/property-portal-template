@@ -36,9 +36,11 @@ Safety, schemas, release checks, sample workflows, and the owner authority bound
 
 - replace sample property data with approved owner facts
 - wire database/auth/email/storage
-- configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
+- set an explicit auth mode; configure passcode secrets only for a private one-owner pilot
+- for an agency, apply the pinned OIDC schema, pre-bind reviewed identities, prove role denials and atomic revocation, and run both identity smoke suites
 - run `npm run install:proof` and attach the proof packet to the owner or partner handoff
 - run `npm run db:rls:smoke` against the target database
+- use a dedicated non-owner, `NOSUPERUSER NOBYPASSRLS` runtime database role
 - apply the v0.2 mission and controlled-transition schema before using database mode
 - implement transition receipts transactionally before enabling any controlled state change
 - configure owner notification

@@ -3,6 +3,7 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 import { z } from "zod";
 import type { AgentRole } from "@/lib/types";
 import { controlPlaneConfiguration } from "./mcp-configuration.ts";
+import { controlPlaneAccessToken } from "./mcp-credential.ts";
 
 const roles = [
   "property-steward",
@@ -143,7 +144,8 @@ async function callControlPlane<T>({ name, arguments: args, schema }: ControlPla
     throw error;
   }
 
-  const headers: Record<string, string> = { authorization: `Bearer ${config.accessToken}` };
+  const accessToken = await controlPlaneAccessToken(config);
+  const headers: Record<string, string> = { authorization: `Bearer ${accessToken}` };
   if (config.origin) headers.origin = config.origin;
   const transport = new StreamableHTTPClientTransport(new URL(config.url), {
     requestInit: { headers, signal: AbortSignal.timeout(config.timeoutMs) }

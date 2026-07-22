@@ -11,7 +11,7 @@ const governedActionBoundary = [
 ];
 
 export async function GET(request: Request) {
-  const denied = await requireOwnerApiAccess(request);
+  const denied = await requireOwnerApiAccess(request, "operations:read");
   if (denied) return denied;
 
   try {
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const denied = await requireOwnerApiAccess(request);
+  const denied = await requireOwnerApiAccess(request, "operations:write");
   if (denied) return denied;
 
   try {

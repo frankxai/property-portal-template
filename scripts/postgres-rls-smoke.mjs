@@ -30,9 +30,17 @@ const requiredTables = [
   "controlled_transitions",
   "audit_events"
 ];
+const requiredAuthTables = [
+  "auth_users",
+  "auth_sessions",
+  "auth_accounts",
+  "auth_verifications",
+  "auth_rate_limits",
+  "property_os_schema_versions"
+];
 
 const sql = postgres(databaseUrl, {
-  max: 1,
+  max: 4,
   idle_timeout: 20,
   connect_timeout: 10
 });
@@ -61,6 +69,15 @@ async function countVisibleRows(orgId) {
 }
 
 try {
+  const runtimeRole = await sql`
+    select r.rolname, r.rolsuper, r.rolbypassrls
+    from pg_roles r
+    where r.rolname = current_user
+  `;
+  if (!runtimeRole[0] || runtimeRole[0].rolsuper || runtimeRole[0].rolbypassrls) {
+    throw new Error("DATABASE_URL must use a dedicated NOSUPERUSER NOBYPASSRLS runtime role.");
+  }
+
   const policyRows = await sql`
     select c.relname, c.relrowsecurity, c.relforcerowsecurity
     from pg_class c
@@ -80,7 +97,49 @@ try {
     throw new Error(`RLS is not enabled and forced for: ${weakTables.map((row) => row.relname).join(", ")}`);
   }
 
-  const activeOrg = await countVisibleRows(organizationId);
+  const ownedRuntimeTables = await sql`
+    select c.relname
+    from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    join pg_roles r on r.oid = c.relowner
+    where n.nspname = 'public'
+      and c.relname in ${sql(requiredTables)}
+      and r.rolname = current_user
+  `;
+  if (ownedRuntimeTables.length) {
+    throw new Error(`Runtime role must not own RLS tables: ${ownedRuntimeTables.map((row) => row.relname).join(", ")}`);
+  }
+
+  const authTableRows = await sql`
+    select table_name
+    from information_schema.tables
+    where table_schema = 'public' and table_name in ${sql(requiredAuthTables)}
+  `;
+  const missingAuthTables = requiredAuthTables.filter((table) => !authTableRows.some((row) => row.table_name === table));
+  if (missingAuthTables.length) throw new Error(`Missing pinned identity tables: ${missingAuthTables.join(", ")}`);
+
+  const identityColumns = await sql`
+    select column_name
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'organization_members'
+      and column_name in ('identity_issuer', 'identity_subject', 'status', 'last_authenticated_at')
+  `;
+  if (identityColumns.length !== 4) throw new Error("organization_members is missing tenant OIDC identity columns.");
+
+  const schemaVersion = await sql`
+    select version from property_os_schema_versions where component = 'better-auth'
+  `;
+  if (schemaVersion[0]?.version !== "1.6.23-property-os.1") {
+    throw new Error("Better Auth schema version does not match 1.6.23-property-os.1.");
+  }
+
+  const [activeOrg, impossibleOrg, concurrentActiveOrg, concurrentImpossibleOrg] = await Promise.all([
+    countVisibleRows(organizationId),
+    countVisibleRows(impossibleOrganizationId),
+    countVisibleRows(organizationId),
+    countVisibleRows(`${impossibleOrganizationId}-concurrent`)
+  ]);
   if (activeOrg.currentOrganizationId !== organizationId) {
     throw new Error(`Tenant context did not resolve to ${organizationId}.`);
   }
@@ -89,7 +148,6 @@ try {
     throw new Error(`No properties are visible for ${organizationId}. Seed the target org before running this smoke test.`);
   }
 
-  const impossibleOrg = await countVisibleRows(impossibleOrganizationId);
   if (
     impossibleOrg.properties !== 0 ||
     impossibleOrg.supportTickets !== 0 ||
@@ -99,6 +157,10 @@ try {
     impossibleOrg.weeklyObservations !== 0
   ) {
     throw new Error("RLS isolation failed: rows were visible for an unseeded organization context.");
+  }
+
+  if (concurrentActiveOrg.properties !== activeOrg.properties || concurrentImpossibleOrg.properties !== 0) {
+    throw new Error("RLS isolation failed under concurrent pooled tenant contexts.");
   }
 
   console.log(`Postgres/RLS smoke passed for ${organizationId}.`);

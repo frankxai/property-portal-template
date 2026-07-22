@@ -10,12 +10,17 @@ import {
   recordApprovedEvidenceInControlPlane,
   runAgentDraftInControlPlane
 } from "../lib/mcp-control-plane.ts";
+import { clearControlPlaneCredentialCacheForTests } from "../lib/mcp-credential.ts";
 
 const app = createMcpExpressApp({ host: "127.0.0.1", allowedHosts: ["127.0.0.1"] });
 const bearerValue = randomUUID();
+const oidcClientId = "portal+smoke/client";
+const credentialFixture = `${randomUUID()}:%/reserved`;
+const expectedClientAuthorization = `Basic ${Buffer.from(`${encodeURIComponent(oidcClientId)}:${encodeURIComponent(credentialFixture)}`).toString("base64")}`;
 const evidenceHash = "a".repeat(64);
 const outputHash = "b".repeat(64);
 let authorizationChecks = 0;
+let credentialRequests = 0;
 
 function result(value) {
   return {
@@ -126,6 +131,15 @@ app.post("/mcp", async (request, response) => {
   await transport.handleRequest(request, response, request.body);
 });
 
+app.post("/oauth/token", (request, response) => {
+  if (request.get("authorization") !== expectedClientAuthorization) {
+    response.status(401).json({ error: "invalid_client" });
+    return;
+  }
+  credentialRequests += 1;
+  response.json({ access_token: bearerValue, token_type: "Bearer", expires_in: 300 });
+});
+
 const listener = await new Promise((resolve, reject) => {
   const server = app.listen(0, "127.0.0.1", () => resolve(server));
   server.on("error", reject);
@@ -135,10 +149,17 @@ if (!address || typeof address === "string") throw new Error("MCP smoke listener
 
 const previous = {
   url: process.env.MCP_SERVER_URL,
+  authMode: process.env.MCP_SERVER_AUTH_MODE,
   token: process.env.MCP_SERVER_ACCESS_TOKEN,
+  tokenUrl: process.env.MCP_OIDC_TOKEN_URL,
+  clientId: process.env.MCP_OIDC_CLIENT_ID,
+  clientSecret: process.env.MCP_OIDC_CLIENT_SECRET,
+  audience: process.env.MCP_OIDC_AUDIENCE,
+  scope: process.env.MCP_OIDC_SCOPE,
   organizationId: process.env.PROPERTY_OS_ORG_ID
 };
 process.env.MCP_SERVER_URL = `http://127.0.0.1:${address.port}/mcp`;
+process.env.MCP_SERVER_AUTH_MODE = "static";
 process.env.MCP_SERVER_ACCESS_TOKEN = bearerValue;
 process.env.PROPERTY_OS_ORG_ID = "sample-org";
 
@@ -184,13 +205,42 @@ try {
   if (!controlPlaneConfiguration().partial) throw new Error("Partial MCP configuration was not detected.");
   process.env.MCP_SERVER_ACCESS_TOKEN = "too-short";
   const weakConfig = controlPlaneConfiguration();
-  if (!weakConfig.partial || !weakConfig.issues.some((issue) => issue.includes("24 characters"))) {
+  if (!weakConfig.partial || !weakConfig.issues.some((issue) => issue.includes("32 characters"))) {
     throw new Error("Weak MCP access-token configuration was not rejected.");
   }
+
+  delete process.env.MCP_SERVER_ACCESS_TOKEN;
+  process.env.MCP_SERVER_AUTH_MODE = "oidc-client-credentials";
+  process.env.MCP_OIDC_TOKEN_URL = `http://127.0.0.1:${address.port}/oauth/token`;
+  process.env.MCP_OIDC_CLIENT_ID = oidcClientId;
+  process.env["MCP_OIDC_CLIENT_SECRET"] = credentialFixture;
+  process.env.MCP_OIDC_AUDIENCE = "property-os-mcp";
+  process.env.MCP_OIDC_SCOPE = "property:read property:draft property:approve";
+  clearControlPlaneCredentialCacheForTests();
+  if (!controlPlaneConfiguration().configured) throw new Error("OIDC client-credential MCP configuration was not detected.");
+  await createMissionInControlPlane({
+    role: "property-steward",
+    propertySlug: "sample-property",
+    objective: "Prove short-lived MCP service credentials.",
+    successMetric: "One cached client credential serves two authenticated calls."
+  });
+  await createMissionInControlPlane({
+    role: "property-steward",
+    propertySlug: "sample-property",
+    objective: "Prove MCP credential cache reuse.",
+    successMetric: "No second token request is made before expiry."
+  });
+  if (credentialRequests !== 1) throw new Error(`Expected one OIDC client credential request, received ${credentialRequests}.`);
   console.log("Portal MCP governed agent-loop contract passed.");
 } finally {
   if (previous.url === undefined) delete process.env.MCP_SERVER_URL; else process.env.MCP_SERVER_URL = previous.url;
+  if (previous.authMode === undefined) delete process.env.MCP_SERVER_AUTH_MODE; else process.env.MCP_SERVER_AUTH_MODE = previous.authMode;
   if (previous.token === undefined) delete process.env.MCP_SERVER_ACCESS_TOKEN; else process.env.MCP_SERVER_ACCESS_TOKEN = previous.token;
+  if (previous.tokenUrl === undefined) delete process.env.MCP_OIDC_TOKEN_URL; else process.env.MCP_OIDC_TOKEN_URL = previous.tokenUrl;
+  if (previous.clientId === undefined) delete process.env.MCP_OIDC_CLIENT_ID; else process.env.MCP_OIDC_CLIENT_ID = previous.clientId;
+  if (previous.clientSecret === undefined) delete process.env.MCP_OIDC_CLIENT_SECRET; else process.env.MCP_OIDC_CLIENT_SECRET = previous.clientSecret;
+  if (previous.audience === undefined) delete process.env.MCP_OIDC_AUDIENCE; else process.env.MCP_OIDC_AUDIENCE = previous.audience;
+  if (previous.scope === undefined) delete process.env.MCP_OIDC_SCOPE; else process.env.MCP_OIDC_SCOPE = previous.scope;
   if (previous.organizationId === undefined) delete process.env.PROPERTY_OS_ORG_ID; else process.env.PROPERTY_OS_ORG_ID = previous.organizationId;
   await new Promise((resolve) => listener.close(resolve));
 }

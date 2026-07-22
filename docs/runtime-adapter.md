@@ -2,12 +2,12 @@
 
 The portal ships with two runtime modes:
 
-- `demo-memory`: default mode for community forks, local tests, and screenshots.
+- `demo-memory`: development mode for community forks, local tests, and screenshots. A production-shaped local test must explicitly set `PROPERTY_OS_DEMO_RUNTIME=true` and use a loopback `APP_BASE_URL`.
 - `postgres`: production path activated by `DATABASE_URL`.
 
 The switch is automatic and visible through `/api/runtime/health`, `/api/runtime/snapshot`, and `/admin/runtime`.
 
-Agent missions have an additional authoritative path. When both `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN` are configured, `/api/agent-missions` writes through the authenticated MCP control plane. The portal does not duplicate that write in its local adapter. A partial configuration or failed MCP request returns `503` before notification or downstream work; there is no silent production fallback.
+Agent missions have an additional authoritative path. A private pilot selects `MCP_SERVER_AUTH_MODE=static`; an agency selects `oidc-client-credentials`, and the portal fetches a short-lived service token from the configured token endpoint. `/api/agent-missions` then writes through the authenticated MCP control plane. The portal does not duplicate that write in its local adapter. A partial configuration, credential failure, or MCP failure returns `503` before notification or downstream work; there is no silent production fallback.
 
 ## Demo Memory
 
@@ -18,7 +18,9 @@ Demo memory stores sanitized runtime summaries only inside the current Node proc
 - explaining owner approval workflows
 - partner demos
 
-It is not durable and must not be used as production storage.
+It is not durable and cannot accept production intake. Without `DATABASE_URL`, a non-loopback production process returns `503` before an inquiry/support approval or owner notification is created.
+
+Inquiry plus approval and support ticket plus approval are each committed in one tenant transaction. Owner notification starts only after both durable records exist.
 
 ## Postgres Runtime
 
@@ -30,12 +32,13 @@ Production installs should:
 4. seed `organizations` and approved `properties`
 5. set `PROPERTY_OS_ORG_ID`
 6. set `DATABASE_URL`
-7. configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
-8. run `npm run db:rls:smoke`
-9. configure the MCP endpoint, origin, and access token backed by a separate control-plane logical database, then run `npm run mcp:smoke`
-10. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
+7. set an explicit owner auth mode; use the passcode only for a private pilot or apply `db/004-tenant-oidc.sql` and pre-bind agency members
+8. run `npm run identity:smoke`, then `npm run db:rls:smoke` with the dedicated runtime role
+9. for agency mode, set reviewed expected subjects and run `npm run identity:db:smoke`
+10. configure the MCP endpoint, origin, and tenant-bound credential backed by a separate control-plane logical database, then run `npm run mcp:smoke`
+11. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
 
-Existing databases also apply `db/002-notification-lifecycle.sql` and `db/003-weekly-owner-review.sql` in order, rerun `db/rls.sql`, and rerun the live RLS smoke.
+Existing databases also apply `db/002-notification-lifecycle.sql`, `db/003-weekly-owner-review.sql`, and `db/004-tenant-oidc.sql` in order, rerun `db/rls.sql`, and rerun the live database smokes.
 
 The adapter writes:
 
@@ -61,7 +64,7 @@ The app sets that tenant context inside each Postgres transaction before runtime
 select set_config('property_os.organization_id', '<PROPERTY_OS_ORG_ID>', true);
 ```
 
-This does not replace application auth. It gives implementers a database-level tenant boundary so a future owner or agency install can move toward multi-owner operation without relying only on application filters.
+This does not replace application auth. `DATABASE_URL` must use a dedicated `NOSUPERUSER NOBYPASSRLS` runtime role that does not own these tables. The deployment is one organization logical-database boundary; unrelated organizations do not share Better Auth protocol tables.
 
 Install order:
 
@@ -115,6 +118,8 @@ Do not put real renter data through the portal until:
 
 - Postgres writes are verified
 - auth and owner/admin role checks exist
+- the selected auth mode is explicit and `npm run identity:smoke` passes
+- agency installs pass `npm run identity:db:smoke` plus a real-provider callback/revocation test
 - `npm run db:rls:smoke` passes against the target database
 - the deployed MCP `/readyz` reports durable Postgres state and the portal-to-MCP mission flow passes
 - row-level security policies are applied

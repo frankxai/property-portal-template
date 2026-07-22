@@ -4,11 +4,14 @@ import { createServer } from "node:http";
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { createTestOwnerAuth, signInTestOwner } from "./test-owner-auth.mjs";
 
 const port = Number(process.env.NOTIFICATION_SMOKE_PORT ?? 3215);
 const baseUrl = `http://127.0.0.1:${port}`;
 const isWindows = process.platform === "win32";
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+const testOwner = createTestOwnerAuth(baseUrl);
+let ownerCookie = "";
 const workerToken = randomBytes(32).toString("base64url");
 const primarySigningSecret = randomBytes(32).toString("base64url");
 const fallbackSigningSecret = randomBytes(32).toString("base64url");
@@ -59,8 +62,7 @@ const nextServer = spawn(process.execPath, [nextBin, "start", "-p", String(port)
   env: {
     ...process.env,
     PORT: String(port),
-    APP_BASE_URL: baseUrl,
-    PROPERTY_OS_DEMO_AUTH: "true",
+    ...testOwner.env,
     OWNER_NOTIFICATION_WEBHOOK_URL: primaryUrl,
     OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET: primarySigningSecret,
     OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL: fallbackUrl,
@@ -114,7 +116,7 @@ async function processQueue(token = workerToken) {
 }
 
 async function deliveries() {
-  const response = await fetch(`${baseUrl}/api/notifications`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}/api/notifications`, { cache: "no-store", headers: { cookie: ownerCookie } });
   assert.equal(response.status, 200);
   return (await response.json()).deliveries;
 }
@@ -151,6 +153,7 @@ function verifySignedRequest(request, signingSecret) {
 
 try {
   await waitForNext();
+  ownerCookie = await signInTestOwner(baseUrl, testOwner.passcode);
 
   const denied = await processQueue("wrong-worker-token");
   assert.equal(denied.response.status, 401);
@@ -188,14 +191,20 @@ try {
   assert.equal(urgentDelivery.status, "fallback-sent");
   assert.equal(urgentDelivery.fallbackAttemptCount, 1);
 
-  const acknowledge = await fetch(`${baseUrl}/api/notifications/${urgent.ownerNotification.id}/acknowledge`, { method: "POST" });
+  const acknowledge = await fetch(`${baseUrl}/api/notifications/${urgent.ownerNotification.id}/acknowledge`, {
+    method: "POST",
+    headers: { cookie: ownerCookie, origin: baseUrl }
+  });
   assert.equal(acknowledge.status, 200);
   const acknowledgement = await acknowledge.json();
   assert.equal(acknowledgement.changed, true);
   assert.equal(acknowledgement.delivery.status, "acknowledged");
   assert.deepEqual(acknowledgement.externalActionsPerformed, []);
 
-  const replay = await fetch(`${baseUrl}/api/notifications/${urgent.ownerNotification.id}/acknowledge`, { method: "POST" });
+  const replay = await fetch(`${baseUrl}/api/notifications/${urgent.ownerNotification.id}/acknowledge`, {
+    method: "POST",
+    headers: { cookie: ownerCookie, origin: baseUrl }
+  });
   assert.equal(replay.status, 200);
   assert.equal((await replay.json()).changed, false);
 

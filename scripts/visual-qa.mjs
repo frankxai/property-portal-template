@@ -4,9 +4,11 @@ import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright-core";
+import { authenticateBrowserContext, createTestOwnerAuth } from "./test-owner-auth.mjs";
 
 const port = Number(process.env.VISUAL_QA_PORT ?? 3214);
 const baseUrl = `http://127.0.0.1:${port}`;
+const testOwner = createTestOwnerAuth(baseUrl);
 const route = "/admin/agent-workbench";
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
 const artifactDir = path.join(process.cwd(), "artifacts", "visual-qa");
@@ -34,7 +36,7 @@ async function browserPath() {
 
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
   cwd: process.cwd(),
-  env: { ...process.env, PORT: String(port), PROPERTY_OS_DEMO_AUTH: "true" },
+  env: { ...process.env, PORT: String(port), ...testOwner.env },
   stdio: ["ignore", "pipe", "pipe"]
 });
 let serverOutput = "";
@@ -117,6 +119,7 @@ try {
   await waitForServer();
   browser = await chromium.launch({ executablePath: await browserPath(), headless: true });
   const context = await browser.newContext();
+  await authenticateBrowserContext(context, baseUrl, testOwner.passcode);
   const page = await context.newPage();
   const evidence = [];
   evidence.push(await inspect(page, "desktop", { width: 1440, height: 1200 }));

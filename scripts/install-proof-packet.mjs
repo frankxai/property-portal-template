@@ -1,8 +1,12 @@
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
+import { oidcAuthEnv, ownerAuthStatus, staticPrivatePilotAuthEnv } from "../lib/auth-configuration.ts";
+import { controlPlaneConfiguration } from "../lib/mcp-configuration.ts";
 
 const root = process.cwd();
 const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
+const ownerAuth = ownerAuthStatus();
+const controlPlane = controlPlaneConfiguration();
 
 const requiredEnv = [
   "DATABASE_URL",
@@ -12,17 +16,27 @@ const requiredEnv = [
   "OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL",
   "OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET",
   "OWNER_NOTIFICATION_WORKER_TOKEN",
-  "OWNER_PORTAL_SECRET",
-  "OWNER_PORTAL_PASSCODE_HASH"
+  ...ownerAuth.requiredEnv
 ];
 
 const optionalEnv = [
-  "AUTH_PROVIDER",
-  "OWNER_ADMIN_EMAIL",
-  "OWNER_PORTAL_API_TOKEN",
+  "PROPERTY_OS_AUTH_MODE",
   "PROPERTY_OS_DEMO_AUTH",
+  "PROPERTY_OS_DEMO_RUNTIME",
+  ...staticPrivatePilotAuthEnv,
+  ...oidcAuthEnv,
+  "PROPERTY_OS_OIDC_PROVIDER_ID",
+  "PROPERTY_OS_OIDC_ORGANIZATION_CLAIM",
+  "PROPERTY_OS_OIDC_ROLE_CLAIM",
+  "PROPERTY_OS_EXPECTED_OIDC_SUBJECTS",
   "MCP_SERVER_URL",
+  "MCP_SERVER_AUTH_MODE",
   "MCP_SERVER_ACCESS_TOKEN",
+  "MCP_OIDC_TOKEN_URL",
+  "MCP_OIDC_CLIENT_ID",
+  "MCP_OIDC_CLIENT_SECRET",
+  "MCP_OIDC_AUDIENCE",
+  "MCP_OIDC_SCOPE",
   "MCP_SERVER_ORIGIN",
   "MCP_REQUEST_TIMEOUT_MS",
   "OWNER_NOTIFICATION_MAX_ATTEMPTS",
@@ -39,9 +53,15 @@ const requiredFiles = [
   "data/properties.ts",
   "lib/install-proof.ts",
   "lib/auth.ts",
+  "lib/auth-configuration.ts",
+  "lib/identity-policy.ts",
+  "lib/owner-capabilities.ts",
+  "lib/oidc-auth.ts",
+  "lib/oidc-token.ts",
   "lib/runtime-contracts.ts",
   "lib/agent-control-plane.ts",
   "lib/mcp-configuration.ts",
+  "lib/mcp-credential.ts",
   "lib/mcp-control-plane.ts",
   "lib/control-plane-route.ts",
   "lib/runtime-store.ts",
@@ -57,7 +77,12 @@ const requiredFiles = [
   "app/api/install/proof-packet/route.ts",
   "db/schema.sql",
   "db/rls.sql",
+  "db/004-tenant-oidc.sql",
   "scripts/auth-boundary-smoke.mjs",
+  "scripts/identity-policy-smoke.mjs",
+  "scripts/oidc-token-smoke.mjs",
+  "scripts/identity-schema-contract.mjs",
+  "scripts/oidc-database-smoke.mjs",
   "scripts/visual-qa.mjs",
   "scripts/postgres-rls-smoke.mjs",
   "scripts/mcp-control-plane-smoke.mjs",
@@ -93,7 +118,9 @@ async function fileStatus(file) {
 }
 
 const fileEvidence = await Promise.all(requiredFiles.map(fileStatus));
-const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+const selectedRequiredEnv = [...new Set(requiredEnv)];
+const selectedOptionalEnv = [...new Set(optionalEnv.filter((name) => !selectedRequiredEnv.includes(name)))];
+const missingEnv = selectedRequiredEnv.filter((name) => !process.env[name]);
 const notificationReady = Boolean(
   process.env.OWNER_NOTIFICATION_WEBHOOK_URL &&
   process.env.OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET &&
@@ -109,8 +136,10 @@ const phases = [
   },
   {
     id: "owner-auth",
-    status: process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH ? "ready" : "configure",
-    gate: "Owner session and protected API smoke tests pass."
+    status: ownerAuth.configured ? "ready" : "configure",
+    gate: ownerAuth.scope === "agency"
+      ? "Signed ID-token, PKCE, pre-bound tenant membership, fixed revocable session, role capability, and protected API checks pass."
+      : "Private-pilot owner session and protected API smoke tests pass; agencies must select OIDC."
   },
   {
     id: "property-content",
@@ -124,8 +153,8 @@ const phases = [
   },
   {
     id: "agent-substrate",
-    status: process.env.MCP_SERVER_URL && process.env.MCP_SERVER_ACCESS_TOKEN ? "manual" : "configure",
-    gate: "Mission, approved evidence, structured draft, and owner review pass through authenticated MCP without silent fallback; external actions remain blocked."
+    status: controlPlane.configured ? "manual" : "configure",
+    gate: "Mission, approved evidence, structured draft, and owner review pass through authenticated MCP without silent fallback. Agencies use short-lived OIDC client credentials; external actions remain blocked."
   },
   {
     id: "owner-notifications",
@@ -157,8 +186,10 @@ const packet = {
   score,
   posture: score >= 75 ? "self-service-installable" : "template-ready-needs-configuration",
   env: {
-    required: requiredEnv.map((name) => ({ name, configured: !missingEnv.includes(name) })),
-    optional: optionalEnv.map((name) => ({ name, configured: Boolean(process.env[name]) }))
+    authMode: ownerAuth.mode,
+    authScope: ownerAuth.scope,
+    required: selectedRequiredEnv.map((name) => ({ name, configured: !missingEnv.includes(name) })),
+    optional: selectedOptionalEnv.map((name) => ({ name, configured: Boolean(process.env[name]) }))
   },
   fileEvidence,
   phases,
@@ -168,6 +199,8 @@ const packet = {
     "npm run build",
     "npm run smoke",
     "npm run auth:smoke",
+    "npm run identity:smoke",
+    "npm run identity:db:smoke",
     "npm run notification:smoke",
     "npm run notification:visual",
     "npm run weekly:smoke",
@@ -180,7 +213,8 @@ const packet = {
   ],
   publicSafety: {
     secretHandling: "This CLI reports environment key names and configured booleans only; it does not print secret values.",
-    dataBoundary: "Approved facts live in GitHub content; private renter submissions belong in runtime storage.",
+    dataBoundary: "Approved facts live in GitHub content; private renter submissions require durable runtime storage. Production intake fails closed instead of accepting demo-memory writes.",
+    identityBoundary: "Agency mode requires a pre-bound exact issuer/subject membership, signed ID-token claims, and a database session plus role check on every protected request. Portal-wide bearer bypasses are not accepted.",
     databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
     notificationBoundary: "The outbox stores sanitized summaries and hashes only; signed delivery and acknowledgement never send renter replies or dispatch work.",
     measurementBoundary: "Weekly evidence preserves unmeasured states and the zero-action observation covers only this product's governed action surface.",

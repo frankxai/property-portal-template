@@ -45,6 +45,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run identity:smoke
 npm run notification:smoke
 npm run weekly:smoke
 npm run weekly:visual
@@ -53,11 +54,12 @@ npm run audit
 npm run install:proof
 npm run auth:hash -- "private owner passcode"
 npm run db:rls:smoke
+npm run identity:db:smoke
 ```
 
 ## Data Model
 
-The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions use a demo in-memory store by default and switch to the Postgres adapter when `DATABASE_URL` is configured. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues or notification workers.
+The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions may use demo memory only in development or an explicit loopback test process. Production intake requires `DATABASE_URL`, records the submission and approval atomically, and returns `503` before notification when durable storage is unavailable. Send only sanitized summaries to GitHub issues or notification workers.
 
 The first portal schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, notifications, weekly owner reviews, immutable metric observations, approvals, portal agent runs, agent missions, transition proposals, approval receipts, controlled transitions, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
 
@@ -79,7 +81,16 @@ Production database order for a fresh install:
 4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
 5. Verify `/admin/runtime` in the deployed preview before real renter data.
 
-Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql` and `db/003-weekly-owner-review.sql` in order, rerun `db/rls.sql`, and rerun `npm run db:rls:smoke` before enabling production workflows.
+Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql`, `db/003-weekly-owner-review.sql`, and the transactional `db/004-tenant-oidc.sql` in order, then rerun `db/rls.sql` and the live database smokes before enabling production workflows.
+
+## Owner Identity
+
+Production must explicitly set `PROPERTY_OS_AUTH_MODE`; absent, unsupported, or incomplete modes lock owner access.
+
+- `static-private-pilot` is the private one-owner path with a high-entropy signing secret and passcode digest.
+- `oidc` is the agency path with pre-bound organization membership, signed ID-token verification against pinned JWKS, fixed server-backed sessions, PostgreSQL rate limits, role capabilities, and atomic member/session revocation.
+
+The portal accepts no global owner API bearer. Machine-to-machine agent work crosses the separately authenticated MCP boundary. See `docs/owner-auth.md` for endpoint configuration, reviewed member binding, database role constraints, and deployed acceptance evidence.
 
 ## Implementation Cockpit
 
@@ -131,6 +142,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 ## Operating Docs
 
 - `docs/operator-runbook.md`
+- `docs/owner-auth.md`
 - `docs/self-service-install.md`
 - `docs/implementation-cockpit.md`
 - `docs/runtime-adapter.md`
@@ -147,4 +159,4 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 
 ## Support Boundary
 
-The public template runs in demo mode until a real database/auth/email adapter is installed. Do not use it with real renter data until production hardening, legal review, monitoring, and owner approval flows are complete.
+The public template can run as an explicit local demo, but production owner access fails closed. Do not use it with real renter data until the target database, selected auth mode, notifications, legal review, monitoring, and owner approval flows have deployment evidence.

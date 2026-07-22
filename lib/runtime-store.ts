@@ -69,7 +69,19 @@ function organizationId() {
   return process.env.PROPERTY_OS_ORG_ID || "sample-org";
 }
 
+export function demoRuntimeAllowed(env: NodeJS.ProcessEnv = process.env) {
+  if (env.NODE_ENV !== "production") return true;
+  if (env.PROPERTY_OS_DEMO_RUNTIME !== "true") return false;
+  try {
+    const hostname = new URL(env.APP_BASE_URL || "").hostname;
+    return ["127.0.0.1", "localhost", "::1"].includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
 function demoRecord(item: RuntimeQueueItem, auditEvent?: AuditEvent): RuntimePersistenceReceipt {
+  if (!demoRuntimeAllowed()) return failureReceipt("demo-memory", "durable-runtime-required");
   demoState.queue.unshift(item);
   demoState.queue = demoState.queue.slice(0, 50);
   if (auditEvent) {
@@ -247,73 +259,25 @@ async function insertAudit(sql: postgres.Sql, event: AuditEvent, subjectType: st
   `;
 }
 
-export async function persistInquiry(input: {
+type InquiryPersistenceInput = {
   payload: InquiryPayload;
   item: RuntimeQueueItem;
   auditEvent: AuditEvent;
-}): Promise<RuntimePersistenceReceipt> {
-  const sql = getSql();
-  if (!sql) return demoRecord(input.item, input.auditEvent);
+};
 
-  try {
-    await withOrganizationContext(sql, async (scopedSql) => {
-      const propertyId = await getPropertyId(scopedSql, input.payload.propertySlug);
-      await scopedSql`
-        insert into inquiries (
-          id, organization_id, property_id, status, requester_name, requester_email,
-          rental_window, message_private, sanitized_summary, owner_approval_required, created_at, updated_at
-        )
-        values (
-          ${input.item.id}, ${organizationId()}, ${propertyId}, 'owner-review',
-          ${input.payload.name}, ${input.payload.email}, ${input.payload.rentalWindow},
-          ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerApprovalRequired},
-          ${input.item.createdAt}, ${input.item.createdAt}
-        )
-      `;
-      await insertAudit(scopedSql, input.auditEvent, "inquiry", input.item.id);
-    });
-    return { adapter: "postgres", status: "recorded", target: "inquiries", detail: "Recorded inquiry in Postgres runtime storage." };
-  } catch {
-    return failureReceipt("postgres", "inquiries");
-  }
-}
-
-export async function persistSupport(input: {
+type SupportPersistenceInput = {
   payload: SupportPayload;
   item: RuntimeQueueItem;
   auditEvent: AuditEvent;
-}): Promise<RuntimePersistenceReceipt> {
-  const sql = getSql();
-  if (!sql) return demoRecord(input.item, input.auditEvent);
+};
 
-  try {
-    await withOrganizationContext(sql, async (scopedSql) => {
-      const propertyId = await getPropertyId(scopedSql, input.payload.propertySlug);
-      await scopedSql`
-        insert into support_tickets (
-          id, organization_id, property_id, category, urgency, route, status,
-          message_private, sanitized_summary, owner_action, owner_approval_required, created_at, updated_at
-        )
-        values (
-          ${input.item.id}, ${organizationId()}, ${propertyId}, ${input.payload.category},
-          ${input.payload.urgency}, ${input.item.route}, 'owner-review',
-          ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerAction},
-          ${input.item.ownerApprovalRequired}, ${input.item.createdAt}, ${input.item.createdAt}
-        )
-      `;
-      await insertAudit(scopedSql, input.auditEvent, "support_ticket", input.item.id);
-    });
-    return { adapter: "postgres", status: "recorded", target: "support_tickets", detail: "Recorded support ticket in Postgres runtime storage." };
-  } catch {
-    return failureReceipt("postgres", "support_tickets");
-  }
-}
-
-export async function persistApproval(input: {
+type ApprovalPersistenceInput = {
   approval: ApprovalRecord;
   auditEvent: AuditEvent;
-}): Promise<RuntimePersistenceReceipt> {
-  const item: RuntimeQueueItem = {
+};
+
+function approvalQueueItem(input: ApprovalPersistenceInput): RuntimeQueueItem {
+  return {
     id: input.approval.id,
     kind: "approval",
     route: input.approval.route,
@@ -322,20 +286,152 @@ export async function persistApproval(input: {
     ownerApprovalRequired: true,
     createdAt: input.approval.createdAt
   };
+}
+
+async function insertInquiryRecord(sql: postgres.Sql, input: InquiryPersistenceInput) {
+  const propertyId = await getPropertyId(sql, input.payload.propertySlug);
+  await sql`
+    insert into inquiries (
+      id, organization_id, property_id, status, requester_name, requester_email,
+      rental_window, message_private, sanitized_summary, owner_approval_required, created_at, updated_at
+    )
+    values (
+      ${input.item.id}, ${organizationId()}, ${propertyId}, 'owner-review',
+      ${input.payload.name}, ${input.payload.email}, ${input.payload.rentalWindow},
+      ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerApprovalRequired},
+      ${input.item.createdAt}, ${input.item.createdAt}
+    )
+  `;
+  await insertAudit(sql, input.auditEvent, "inquiry", input.item.id);
+}
+
+async function insertSupportRecord(sql: postgres.Sql, input: SupportPersistenceInput) {
+  const propertyId = await getPropertyId(sql, input.payload.propertySlug);
+  await sql`
+    insert into support_tickets (
+      id, organization_id, property_id, category, urgency, route, status,
+      message_private, sanitized_summary, owner_action, owner_approval_required, created_at, updated_at
+    )
+    values (
+      ${input.item.id}, ${organizationId()}, ${propertyId}, ${input.payload.category},
+      ${input.payload.urgency}, ${input.item.route}, 'owner-review',
+      ${input.payload.message}, ${input.item.sanitizedSummary}, ${input.item.ownerAction},
+      ${input.item.ownerApprovalRequired}, ${input.item.createdAt}, ${input.item.createdAt}
+    )
+  `;
+  await insertAudit(sql, input.auditEvent, "support_ticket", input.item.id);
+}
+
+async function insertApprovalRecord(sql: postgres.Sql, input: ApprovalPersistenceInput) {
+  await sql`
+    insert into approvals (id, organization_id, subject_type, subject_id, status, requested_by, created_at)
+    values (${input.approval.id}, ${organizationId()}, ${input.approval.kind}, ${input.approval.sourceId}, 'requested', 'system', ${input.approval.createdAt})
+  `;
+  await insertAudit(sql, input.auditEvent, "approval", input.approval.id);
+}
+
+export async function persistInquiry(input: InquiryPersistenceInput): Promise<RuntimePersistenceReceipt> {
+  const sql = getSql();
+  if (!sql) return demoRecord(input.item, input.auditEvent);
+
+  try {
+    await withOrganizationContext(sql, (scopedSql) => insertInquiryRecord(scopedSql, input));
+    return { adapter: "postgres", status: "recorded", target: "inquiries", detail: "Recorded inquiry in Postgres runtime storage." };
+  } catch {
+    return failureReceipt("postgres", "inquiries");
+  }
+}
+
+export async function persistSupport(input: SupportPersistenceInput): Promise<RuntimePersistenceReceipt> {
+  const sql = getSql();
+  if (!sql) return demoRecord(input.item, input.auditEvent);
+
+  try {
+    await withOrganizationContext(sql, (scopedSql) => insertSupportRecord(scopedSql, input));
+    return { adapter: "postgres", status: "recorded", target: "support_tickets", detail: "Recorded support ticket in Postgres runtime storage." };
+  } catch {
+    return failureReceipt("postgres", "support_tickets");
+  }
+}
+
+export async function persistApproval(input: ApprovalPersistenceInput): Promise<RuntimePersistenceReceipt> {
+  const item = approvalQueueItem(input);
   const sql = getSql();
   if (!sql) return demoRecord(item, input.auditEvent);
 
   try {
-    await withOrganizationContext(sql, async (scopedSql) => {
-      await scopedSql`
-        insert into approvals (id, organization_id, subject_type, subject_id, status, requested_by, created_at)
-        values (${input.approval.id}, ${organizationId()}, ${input.approval.kind}, ${input.approval.sourceId}, 'requested', 'system', ${input.approval.createdAt})
-      `;
-      await insertAudit(scopedSql, input.auditEvent, "approval", input.approval.id);
-    });
+    await withOrganizationContext(sql, (scopedSql) => insertApprovalRecord(scopedSql, input));
     return { adapter: "postgres", status: "recorded", target: "approvals", detail: "Recorded approval request in Postgres runtime storage." };
   } catch {
     return failureReceipt("postgres", "approvals");
+  }
+}
+
+type IntakePersistenceResult = {
+  persistence: RuntimePersistenceReceipt;
+  approvalPersistence: RuntimePersistenceReceipt;
+};
+
+type IntakeApprovalInput = {
+  approval: ApprovalRecord;
+  approvalAuditEvent: AuditEvent;
+};
+
+export async function persistInquiryIntake(
+  input: InquiryPersistenceInput & IntakeApprovalInput
+): Promise<IntakePersistenceResult> {
+  const approvalInput = { approval: input.approval, auditEvent: input.approvalAuditEvent };
+  const sql = getSql();
+  if (!sql) {
+    const persistence = demoRecord(input.item, input.auditEvent);
+    const approvalPersistence = persistence.status === "recorded"
+      ? demoRecord(approvalQueueItem(approvalInput), input.approvalAuditEvent)
+      : failureReceipt("demo-memory", "durable-runtime-required");
+    return { persistence, approvalPersistence };
+  }
+  try {
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await insertInquiryRecord(scopedSql, input);
+      await insertApprovalRecord(scopedSql, approvalInput);
+    });
+    return {
+      persistence: { adapter: "postgres", status: "recorded", target: "inquiries", detail: "Recorded inquiry and approval atomically in Postgres runtime storage." },
+      approvalPersistence: { adapter: "postgres", status: "recorded", target: "approvals", detail: "Recorded inquiry and approval atomically in Postgres runtime storage." }
+    };
+  } catch {
+    return {
+      persistence: failureReceipt("postgres", "inquiries"),
+      approvalPersistence: failureReceipt("postgres", "approvals")
+    };
+  }
+}
+
+export async function persistSupportIntake(
+  input: SupportPersistenceInput & IntakeApprovalInput
+): Promise<IntakePersistenceResult> {
+  const approvalInput = { approval: input.approval, auditEvent: input.approvalAuditEvent };
+  const sql = getSql();
+  if (!sql) {
+    const persistence = demoRecord(input.item, input.auditEvent);
+    const approvalPersistence = persistence.status === "recorded"
+      ? demoRecord(approvalQueueItem(approvalInput), input.approvalAuditEvent)
+      : failureReceipt("demo-memory", "durable-runtime-required");
+    return { persistence, approvalPersistence };
+  }
+  try {
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await insertSupportRecord(scopedSql, input);
+      await insertApprovalRecord(scopedSql, approvalInput);
+    });
+    return {
+      persistence: { adapter: "postgres", status: "recorded", target: "support_tickets", detail: "Recorded support ticket and approval atomically in Postgres runtime storage." },
+      approvalPersistence: { adapter: "postgres", status: "recorded", target: "approvals", detail: "Recorded support ticket and approval atomically in Postgres runtime storage." }
+    };
+  } catch {
+    return {
+      persistence: failureReceipt("postgres", "support_tickets"),
+      approvalPersistence: failureReceipt("postgres", "approvals")
+    };
   }
 }
 

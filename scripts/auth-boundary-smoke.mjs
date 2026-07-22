@@ -10,17 +10,22 @@ const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", impo
 const signingKey = randomBytes(32).toString("base64url");
 const passcode = `owner-${randomBytes(8).toString("hex")}`;
 const passcodeDigest = createHash("sha256").update(`${passcode}:${signingKey}`).digest("hex");
-const automationBearer = randomBytes(24).toString("base64url");
+const rejectedLegacyBearer = randomBytes(24).toString("base64url");
 
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
   cwd: process.cwd(),
   env: {
     ...process.env,
     PORT: String(port),
+    PROPERTY_OS_AUTH_MODE: "static-private-pilot",
     PROPERTY_OS_DEMO_AUTH: "false",
+    PROPERTY_OS_DEMO_RUNTIME: "false",
+    PROPERTY_OS_LOCAL_PRODUCTION_TEST: "true",
+    DATABASE_URL: "",
+    APP_BASE_URL: baseUrl,
     OWNER_PORTAL_SECRET: signingKey,
     OWNER_PORTAL_PASSCODE_HASH: passcodeDigest,
-    OWNER_PORTAL_API_TOKEN: automationBearer
+    OWNER_PORTAL_API_TOKEN: rejectedLegacyBearer
   },
   stdio: ["ignore", "pipe", "pipe"]
 });
@@ -60,7 +65,11 @@ async function waitForServer() {
 }
 
 async function expectStatus(path, expectedStatus, init = {}) {
-  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", cache: "no-store", ...init });
+  const headers = new Headers(init.headers);
+  if (init.method && !["GET", "HEAD", "OPTIONS"].includes(init.method.toUpperCase())) {
+    headers.set("origin", baseUrl);
+  }
+  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", cache: "no-store", ...init, headers });
   if (response.status !== expectedStatus) {
     throw new Error(`${path} returned ${response.status}; expected ${expectedStatus}`);
   }
@@ -71,6 +80,11 @@ try {
   await waitForServer();
 
   await expectStatus("/properties/urban-haven-sample", 200);
+  await expectStatus("/api/auth/sign-in/oauth2", 404, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ providerId: "property-os-oidc", callbackURL: "/owner" })
+  });
   await expectStatus("/owner", 307);
   await expectStatus("/admin/agent-workbench", 307);
   await expectStatus("/admin/notifications", 307);
@@ -100,13 +114,35 @@ try {
     headers: { "content-type": "application/json" },
     body: JSON.stringify({})
   });
-  await expectStatus("/api/runtime/snapshot", 200, {
-    headers: { authorization: `Bearer ${automationBearer}` }
+  await expectStatus("/api/runtime/snapshot", 401, {
+    headers: { authorization: `Bearer ${rejectedLegacyBearer}` }
+  });
+  await expectStatus("/api/inquiries", 503, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      propertySlug: "urban-haven-sample",
+      name: "Storage boundary",
+      email: "boundary@example.test",
+      rentalWindow: "Next month",
+      message: "This production-shaped request must not be accepted without durable storage."
+    })
+  });
+  await expectStatus("/api/support", 503, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      propertySlug: "urban-haven-sample",
+      category: "maintenance",
+      urgency: "standard",
+      message: "This production-shaped support request must fail closed without durable storage."
+    })
   });
 
   const signIn = await fetch(`${baseUrl}/api/auth/owner/sign-in`, {
     method: "POST",
     redirect: "manual",
+    headers: { origin: baseUrl },
     body: new URLSearchParams({ passcode, next: "/owner" })
   });
   if (signIn.status !== 303) {
@@ -130,6 +166,15 @@ try {
   await expectStatus("/admin/ops", 200, {
     headers: { cookie }
   });
+
+  const signOut = await expectStatus("/api/auth/owner/sign-out", 303, {
+    method: "POST",
+    headers: { cookie }
+  });
+  const clearedCookie = signOut.headers.get("set-cookie") || "";
+  if (!clearedCookie.includes("property_os_owner_session=") || !/Max-Age=0/i.test(clearedCookie)) {
+    throw new Error("Private-pilot sign-out did not expire the owner session cookie.");
+  }
 
   console.log(`Auth boundary smoke passed at ${baseUrl}`);
 } finally {

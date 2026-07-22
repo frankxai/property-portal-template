@@ -1,11 +1,14 @@
 import { spawn } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { createTestOwnerAuth, signInTestOwner } from "./test-owner-auth.mjs";
 
 const port = Number(process.env.PORT ?? 3212);
 const baseUrl = `http://127.0.0.1:${port}`;
 const isWindows = process.platform === "win32";
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+const testOwner = createTestOwnerAuth(baseUrl);
+let ownerCookie = "";
 
 const routes = [
   "/",
@@ -29,7 +32,7 @@ const routes = [
 
 const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
   cwd: process.cwd(),
-  env: { ...process.env, PORT: String(port), PROPERTY_OS_DEMO_AUTH: "true" },
+  env: { ...process.env, PORT: String(port), ...testOwner.env },
   stdio: ["ignore", "pipe", "pipe"]
 });
 
@@ -77,14 +80,14 @@ async function waitForServer() {
 }
 
 async function expectOk(path) {
-  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store", headers: { cookie: ownerCookie } });
   if (!response.ok) {
     throw new Error(`${path} returned ${response.status}`);
   }
 }
 
 async function expectPageContains(path, snippets) {
-  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}${path}`, { cache: "no-store", headers: { cookie: ownerCookie } });
   if (!response.ok) {
     throw new Error(`${path} returned ${response.status}`);
   }
@@ -100,7 +103,7 @@ async function expectPageContains(path, snippets) {
 async function postJson(path, body) {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", cookie: ownerCookie, origin: baseUrl },
     body: JSON.stringify(body)
   });
 
@@ -125,7 +128,7 @@ async function postJson(path, body) {
 }
 
 async function expectRuntimeHealth() {
-  const response = await fetch(`${baseUrl}/api/runtime/health`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}/api/runtime/health`, { cache: "no-store", headers: { cookie: ownerCookie } });
   if (!response.ok) {
     throw new Error(`/api/runtime/health returned ${response.status}`);
   }
@@ -137,7 +140,7 @@ async function expectRuntimeHealth() {
 }
 
 async function expectImplementationReadiness() {
-  const response = await fetch(`${baseUrl}/api/implementation/readiness`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}/api/implementation/readiness`, { cache: "no-store", headers: { cookie: ownerCookie } });
   if (!response.ok) {
     throw new Error(`/api/implementation/readiness returned ${response.status}`);
   }
@@ -153,7 +156,7 @@ async function expectImplementationReadiness() {
 }
 
 async function expectInstallProofPacket() {
-  const response = await fetch(`${baseUrl}/api/install/proof-packet`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}/api/install/proof-packet`, { cache: "no-store", headers: { cookie: ownerCookie } });
   if (!response.ok) {
     throw new Error(`/api/install/proof-packet returned ${response.status}`);
   }
@@ -177,7 +180,7 @@ async function expectInstallProofPacket() {
 }
 
 async function expectRuntimeSnapshot() {
-  const response = await fetch(`${baseUrl}/api/runtime/snapshot`, { cache: "no-store" });
+  const response = await fetch(`${baseUrl}/api/runtime/snapshot`, { cache: "no-store", headers: { cookie: ownerCookie } });
   if (!response.ok) {
     throw new Error(`/api/runtime/snapshot returned ${response.status}`);
   }
@@ -191,7 +194,7 @@ async function expectRuntimeSnapshot() {
 async function expectGovernedWriteLocked(path, body) {
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", cookie: ownerCookie, origin: baseUrl },
     body: JSON.stringify(body)
   });
   if (response.status !== 503) {
@@ -205,6 +208,7 @@ async function expectGovernedWriteLocked(path, body) {
 
 try {
   await waitForServer();
+  ownerCookie = await signInTestOwner(baseUrl, testOwner.passcode);
 
   for (const route of routes) {
     await expectOk(route);
@@ -269,7 +273,7 @@ try {
 
   const legacyRun = await fetch(`${baseUrl}/api/agent-runs`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", cookie: ownerCookie, origin: baseUrl },
     body: JSON.stringify({
       role: "listing-ops",
       trigger: "Smoke test agent run",
@@ -298,7 +302,7 @@ try {
 
   const approval = await fetch(`${baseUrl}/api/approvals`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", cookie: ownerCookie, origin: baseUrl },
     body: JSON.stringify({
       kind: "integration-dry-run",
       sourceId: "smoke-dry-run",

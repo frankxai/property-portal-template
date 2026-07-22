@@ -3,7 +3,7 @@ import { requireOwnerApiAccess } from "@/lib/auth";
 import { listNotificationDeliveries } from "@/lib/runtime-store";
 
 export async function GET(request: Request) {
-  const denied = await requireOwnerApiAccess(request);
+  const denied = await requireOwnerApiAccess(request, "operations:read");
   if (denied) return denied;
 
   try {

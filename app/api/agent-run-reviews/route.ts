@@ -10,7 +10,7 @@ import {
 import { sanitizeText } from "@/lib/sanitize";
 
 export async function POST(request: Request) {
-  const denied = await requireOwnerApiAccess(request);
+  const denied = await requireOwnerApiAccess(request, "approvals:decide");
   if (denied) return denied;
   const correlationId = `review-${randomUUID()}`;
   let input: Partial<{ runId: string; decision: AgentReviewDecision; feedback: string }>;

@@ -1,4 +1,5 @@
 import type { AgentRole, ApprovalRisk, ListingChannel } from "@/lib/types";
+import { oidcAuthEnv, ownerAuthStatus, staticPrivatePilotAuthEnv } from "./auth-configuration.ts";
 import { controlPlaneConfiguration } from "./mcp-configuration.ts";
 
 export type RuntimeMode = "demo" | "database-ready";
@@ -92,7 +93,6 @@ export type ListingDryRunPayload = {
 };
 
 const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL"];
-const requiredProductionEnv = ["OWNER_PORTAL_SECRET", "OWNER_PORTAL_PASSCODE_HASH"];
 const requiredNotificationEnv = [
   "OWNER_NOTIFICATION_WEBHOOK_URL",
   "OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET",
@@ -101,12 +101,23 @@ const requiredNotificationEnv = [
   "OWNER_NOTIFICATION_WORKER_TOKEN"
 ];
 const optionalRuntimeEnv = [
-  "AUTH_PROVIDER",
-  "OWNER_ADMIN_EMAIL",
-  "OWNER_PORTAL_API_TOKEN",
+  "PROPERTY_OS_AUTH_MODE",
   "PROPERTY_OS_DEMO_AUTH",
+  "PROPERTY_OS_DEMO_RUNTIME",
+  ...staticPrivatePilotAuthEnv,
+  ...oidcAuthEnv,
+  "PROPERTY_OS_OIDC_PROVIDER_ID",
+  "PROPERTY_OS_OIDC_ORGANIZATION_CLAIM",
+  "PROPERTY_OS_OIDC_ROLE_CLAIM",
+  "PROPERTY_OS_EXPECTED_OIDC_SUBJECTS",
   "MCP_SERVER_URL",
+  "MCP_SERVER_AUTH_MODE",
   "MCP_SERVER_ACCESS_TOKEN",
+  "MCP_OIDC_TOKEN_URL",
+  "MCP_OIDC_CLIENT_ID",
+  "MCP_OIDC_CLIENT_SECRET",
+  "MCP_OIDC_AUDIENCE",
+  "MCP_OIDC_SCOPE",
   "MCP_SERVER_ORIGIN",
   "MCP_REQUEST_TIMEOUT_MS",
   "OWNER_NOTIFICATION_MAX_ATTEMPTS",
@@ -139,20 +150,17 @@ export const ownerApprovalRequiredFor = [
 ];
 
 export function runtimeHealth(): RuntimeHealth {
+  const auth = ownerAuthStatus();
   const mcp = controlPlaneConfiguration();
-  const mcpUrl = Boolean(mcp.url);
-  const mcpToken = Boolean(mcp.accessToken);
-  const conditionalMcpEnv = [
-    ...(mcpUrl && !mcpToken ? ["MCP_SERVER_ACCESS_TOKEN"] : []),
-    ...(mcpToken && !mcpUrl ? ["MCP_SERVER_URL"] : [])
-  ];
+  const selectedMcpRequired = mcp.configured || mcp.partial ? mcp.requiredEnv : [];
+  const conditionalMcpEnv = mcp.missingEnv;
   const webhookConfigured = Boolean(process.env.OWNER_NOTIFICATION_WEBHOOK_URL);
   const webhookSigned = Boolean(process.env.OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET);
   const workerConfigured = Boolean(process.env.OWNER_NOTIFICATION_WORKER_TOKEN);
   const fallbackConfigured = Boolean(process.env.OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL);
   const fallbackSigned = Boolean(process.env.OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET);
   const missingEnv = [...new Set([
-    ...[...requiredRuntimeEnv, ...requiredProductionEnv, ...requiredNotificationEnv].filter((name) => !process.env[name]),
+    ...[...requiredRuntimeEnv, ...auth.requiredEnv, ...requiredNotificationEnv].filter((name) => !process.env[name]?.trim()),
     ...conditionalMcpEnv
   ])];
   const primaryNotificationReady = webhookConfigured && webhookSigned && workerConfigured;
@@ -178,14 +186,14 @@ export function runtimeHealth(): RuntimeHealth {
     adapter: missingEnv.includes("DATABASE_URL") ? "demo-memory" : "postgres",
     notificationMode,
     mcpMode: mcp.configured ? "connected" : mcp.partial ? "partial" : "disabled",
-    requiredEnv: [...requiredRuntimeEnv, ...requiredProductionEnv, ...requiredNotificationEnv],
-    optionalEnv: optionalRuntimeEnv,
+    requiredEnv: [...new Set([...requiredRuntimeEnv, ...auth.requiredEnv, ...requiredNotificationEnv, ...selectedMcpRequired])],
+    optionalEnv: [...new Set(optionalRuntimeEnv.filter((name) => !auth.requiredEnv.includes(name) && !selectedMcpRequired.includes(name)))],
     missingEnv,
     capabilities: {
       database: Boolean(process.env.DATABASE_URL),
       ownerNotification: primaryNotificationReady,
       notificationFallback: primaryNotificationReady && fallbackNotificationReady,
-      auth: Boolean(process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH),
+      auth: auth.configured && auth.productionSafe,
       mcpServer: mcp.configured,
       agentRuntime: mcp.configured
     },
