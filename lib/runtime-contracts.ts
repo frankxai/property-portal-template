@@ -1,7 +1,9 @@
 import type { AgentRole, ApprovalRisk, ListingChannel } from "@/lib/types";
+import { oidcAuthEnv, ownerAuthStatus, staticPrivatePilotAuthEnv } from "./auth-configuration.ts";
+import { controlPlaneConfiguration } from "./mcp-configuration.ts";
 
 export type RuntimeMode = "demo" | "database-ready";
-export type RuntimeNotificationMode = "not-configured" | "email-target-only" | "webhook-ready";
+export type RuntimeNotificationMode = "not-configured" | "webhook-incomplete" | "webhook-ready" | "webhook-fallback-ready";
 export type RuntimeAdapterName = "demo-memory" | "postgres";
 
 export type RuntimeActorRole = "owner" | "operator" | "agent" | "renter" | "system";
@@ -17,20 +19,25 @@ export type AuditEventType =
   | "inquiry.created"
   | "support.created"
   | "approval.requested"
+  | "agent_mission.created"
   | "agent_run.logged"
-  | "listing_dry_run.created";
+  | "listing_dry_run.created"
+  | "weekly_review.started"
+  | "weekly_review.completed";
 
 export type RuntimeHealth = {
   mode: RuntimeMode;
   tenantModel: "single-demo" | "multi-tenant-ready";
   adapter: RuntimeAdapterName;
   notificationMode: RuntimeNotificationMode;
+  mcpMode: "disabled" | "partial" | "connected";
   requiredEnv: string[];
   optionalEnv: string[];
   missingEnv: string[];
   capabilities: {
     database: boolean;
     ownerNotification: boolean;
+    notificationFallback: boolean;
     auth: boolean;
     mcpServer: boolean;
     agentRuntime: boolean;
@@ -64,21 +71,61 @@ export type AgentRunPayload = {
   approvalRisk: ApprovalRisk;
 };
 
+export type AgentMissionStatus = "planned" | "grounding" | "drafting" | "owner-review" | "verified" | "stopped";
+
+export type AgentMission = {
+  id: string;
+  role: AgentRole;
+  propertySlug: string | null;
+  objective: string;
+  successMetric: string;
+  status: AgentMissionStatus;
+  authority: "draft-only";
+  ownerApprovalRequired: true;
+  stages: string[];
+  ownerAction: string;
+  createdAt: string;
+};
+
 export type ListingDryRunPayload = {
   propertySlug: string;
   channel: ListingChannel;
 };
 
-const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL", "OWNER_NOTIFICATION_EMAIL"];
-const requiredProductionEnv = ["OWNER_PORTAL_SECRET", "OWNER_PORTAL_PASSCODE_HASH"];
+const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL"];
+const requiredNotificationEnv = [
+  "OWNER_NOTIFICATION_WEBHOOK_URL",
+  "OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET",
+  "OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL",
+  "OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET",
+  "OWNER_NOTIFICATION_WORKER_TOKEN"
+];
 const optionalRuntimeEnv = [
-  "AUTH_PROVIDER",
-  "OWNER_ADMIN_EMAIL",
-  "OWNER_PORTAL_API_TOKEN",
+  "PROPERTY_OS_AUTH_MODE",
   "PROPERTY_OS_DEMO_AUTH",
+  "PROPERTY_OS_DEMO_RUNTIME",
+  ...staticPrivatePilotAuthEnv,
+  ...oidcAuthEnv,
+  "PROPERTY_OS_OIDC_PROVIDER_ID",
+  "PROPERTY_OS_OIDC_ORGANIZATION_CLAIM",
+  "PROPERTY_OS_OIDC_ROLE_CLAIM",
+  "PROPERTY_OS_EXPECTED_OIDC_SUBJECTS",
   "MCP_SERVER_URL",
-  "AGENT_RUNTIME_URL",
-  "OWNER_NOTIFICATION_WEBHOOK_URL"
+  "MCP_SERVER_AUTH_MODE",
+  "MCP_SERVER_ACCESS_TOKEN",
+  "MCP_OIDC_TOKEN_URL",
+  "MCP_OIDC_CLIENT_ID",
+  "MCP_OIDC_CLIENT_SECRET",
+  "MCP_OIDC_AUDIENCE",
+  "MCP_OIDC_SCOPE",
+  "MCP_SERVER_ORIGIN",
+  "MCP_REQUEST_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_MAX_ATTEMPTS",
+  "OWNER_NOTIFICATION_RETRY_BASE_MS",
+  "OWNER_NOTIFICATION_ACK_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_CLAIM_LEASE_MS",
+  "OWNER_NOTIFICATION_REQUEST_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_BATCH_SIZE"
 ];
 
 export const blockedV1Actions = [
@@ -103,27 +150,52 @@ export const ownerApprovalRequiredFor = [
 ];
 
 export function runtimeHealth(): RuntimeHealth {
-  const missingEnv = [...requiredRuntimeEnv, ...requiredProductionEnv].filter((name) => !process.env[name]);
-  const notificationMode: RuntimeNotificationMode = process.env.OWNER_NOTIFICATION_WEBHOOK_URL
-    ? "webhook-ready"
-    : process.env.OWNER_NOTIFICATION_EMAIL
-      ? "email-target-only"
-      : "not-configured";
+  const auth = ownerAuthStatus();
+  const mcp = controlPlaneConfiguration();
+  const selectedMcpRequired = mcp.configured || mcp.partial ? mcp.requiredEnv : [];
+  const conditionalMcpEnv = mcp.missingEnv;
+  const webhookConfigured = Boolean(process.env.OWNER_NOTIFICATION_WEBHOOK_URL);
+  const webhookSigned = Boolean(process.env.OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET);
+  const workerConfigured = Boolean(process.env.OWNER_NOTIFICATION_WORKER_TOKEN);
+  const fallbackConfigured = Boolean(process.env.OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL);
+  const fallbackSigned = Boolean(process.env.OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET);
+  const missingEnv = [...new Set([
+    ...[...requiredRuntimeEnv, ...auth.requiredEnv, ...requiredNotificationEnv].filter((name) => !process.env[name]?.trim()),
+    ...conditionalMcpEnv
+  ])];
+  const primaryNotificationReady = webhookConfigured && webhookSigned && workerConfigured;
+  const fallbackNotificationReady = fallbackConfigured && fallbackSigned;
+  const notificationPartiallyConfigured = [
+    webhookConfigured,
+    webhookSigned,
+    workerConfigured,
+    fallbackConfigured,
+    fallbackSigned
+  ].some(Boolean);
+  const notificationMode: RuntimeNotificationMode = primaryNotificationReady && fallbackNotificationReady
+    ? "webhook-fallback-ready"
+    : primaryNotificationReady
+      ? "webhook-ready"
+      : notificationPartiallyConfigured
+        ? "webhook-incomplete"
+        : "not-configured";
 
   return {
     mode: missingEnv.includes("DATABASE_URL") ? "demo" : "database-ready",
     tenantModel: missingEnv.includes("DATABASE_URL") ? "single-demo" : "multi-tenant-ready",
     adapter: missingEnv.includes("DATABASE_URL") ? "demo-memory" : "postgres",
     notificationMode,
-    requiredEnv: [...requiredRuntimeEnv, ...requiredProductionEnv],
-    optionalEnv: optionalRuntimeEnv,
+    mcpMode: mcp.configured ? "connected" : mcp.partial ? "partial" : "disabled",
+    requiredEnv: [...new Set([...requiredRuntimeEnv, ...auth.requiredEnv, ...requiredNotificationEnv, ...selectedMcpRequired])],
+    optionalEnv: [...new Set(optionalRuntimeEnv.filter((name) => !auth.requiredEnv.includes(name) && !selectedMcpRequired.includes(name)))],
     missingEnv,
     capabilities: {
       database: Boolean(process.env.DATABASE_URL),
-      ownerNotification: notificationMode !== "not-configured",
-      auth: Boolean(process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH),
-      mcpServer: Boolean(process.env.MCP_SERVER_URL),
-      agentRuntime: Boolean(process.env.AGENT_RUNTIME_URL)
+      ownerNotification: primaryNotificationReady,
+      notificationFallback: primaryNotificationReady && fallbackNotificationReady,
+      auth: auth.configured && auth.productionSafe,
+      mcpServer: mcp.configured,
+      agentRuntime: mcp.configured
     },
     blockedV1Actions,
     ownerApprovalRequiredFor
@@ -184,6 +256,27 @@ export function createAgentRun(input: AgentRunPayload) {
       actorRole: "agent",
       summary: `${input.role}: ${input.trigger.slice(0, 140)}`
     })
+  };
+}
+
+export function createAgentMission(input: {
+  role: AgentRole;
+  propertySlug?: string;
+  objective: string;
+  successMetric: string;
+}): AgentMission {
+  return {
+    id: createRuntimeId("mission"),
+    role: input.role,
+    propertySlug: input.propertySlug || null,
+    objective: input.objective,
+    successMetric: input.successMetric,
+    status: "planned",
+    authority: "draft-only",
+    ownerApprovalRequired: true,
+    stages: ["observe", "draft", "review", "decide", "apply", "verify"],
+    ownerAction: "Review the mission objective and evidence gate before any agent output is reused.",
+    createdAt: new Date().toISOString()
   };
 }
 

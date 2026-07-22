@@ -31,8 +31,17 @@ alter table knowledge_articles enable row level security;
 alter table listing_drafts enable row level security;
 alter table inquiries enable row level security;
 alter table support_tickets enable row level security;
+alter table notification_deliveries enable row level security;
+alter table notification_events enable row level security;
+alter table weekly_owner_reviews enable row level security;
+alter table weekly_metric_observations enable row level security;
 alter table approvals enable row level security;
 alter table agent_runs enable row level security;
+alter table agent_missions enable row level security;
+alter table resource_versions enable row level security;
+alter table transition_proposals enable row level security;
+alter table approval_receipts enable row level security;
+alter table controlled_transitions enable row level security;
 alter table audit_events enable row level security;
 
 alter table organizations force row level security;
@@ -43,8 +52,17 @@ alter table knowledge_articles force row level security;
 alter table listing_drafts force row level security;
 alter table inquiries force row level security;
 alter table support_tickets force row level security;
+alter table notification_deliveries force row level security;
+alter table notification_events force row level security;
+alter table weekly_owner_reviews force row level security;
+alter table weekly_metric_observations force row level security;
 alter table approvals force row level security;
 alter table agent_runs force row level security;
+alter table agent_missions force row level security;
+alter table resource_versions force row level security;
+alter table transition_proposals force row level security;
+alter table approval_receipts force row level security;
+alter table controlled_transitions force row level security;
 alter table audit_events force row level security;
 
 drop policy if exists organizations_tenant_isolation on organizations;
@@ -77,6 +95,30 @@ create policy support_tickets_tenant_isolation on support_tickets
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());
 
+drop policy if exists notification_deliveries_tenant_isolation on notification_deliveries;
+create policy notification_deliveries_tenant_isolation on notification_deliveries
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists notification_events_tenant_isolation on notification_events;
+create policy notification_events_tenant_isolation on notification_events
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists weekly_owner_reviews_tenant_isolation on weekly_owner_reviews;
+create policy weekly_owner_reviews_tenant_isolation on weekly_owner_reviews
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists weekly_metric_observations_tenant_isolation on weekly_metric_observations;
+create policy weekly_metric_observations_tenant_isolation on weekly_metric_observations
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
 drop policy if exists approvals_tenant_isolation on approvals;
 create policy approvals_tenant_isolation on approvals
   for all
@@ -85,6 +127,36 @@ create policy approvals_tenant_isolation on approvals
 
 drop policy if exists agent_runs_tenant_isolation on agent_runs;
 create policy agent_runs_tenant_isolation on agent_runs
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists agent_missions_tenant_isolation on agent_missions;
+create policy agent_missions_tenant_isolation on agent_missions
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists resource_versions_tenant_isolation on resource_versions;
+create policy resource_versions_tenant_isolation on resource_versions
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists transition_proposals_tenant_isolation on transition_proposals;
+create policy transition_proposals_tenant_isolation on transition_proposals
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists approval_receipts_tenant_isolation on approval_receipts;
+create policy approval_receipts_tenant_isolation on approval_receipts
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists controlled_transitions_tenant_isolation on controlled_transitions;
+create policy controlled_transitions_tenant_isolation on controlled_transitions
   for all
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());
@@ -112,4 +184,3 @@ create policy listing_drafts_property_tenant_isolation on listing_drafts
   for all
   using (property_os_property_in_current_org(property_id))
   with check (property_os_property_in_current_org(property_id));
-

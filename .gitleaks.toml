@@ -1,0 +1,16 @@
+title = "Property Portal secret-scanning policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Generated and ignored Next.js build output"
+paths = [
+  '''(^|/)\.next/'''
+]
+
+[[allowlists]]
+description = "Pinned public Better Auth schema contract version"
+regexes = [
+  '''1\.6\.23-property-os\.1'''
+]

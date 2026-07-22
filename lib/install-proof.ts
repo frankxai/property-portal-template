@@ -75,9 +75,9 @@ export function createInstallProofPacket() {
       status: hasDatabase ? "manual" : "configure",
       ownerOutcome: "Inquiries, support tickets, approvals, and agent runs persist in tenant-scoped storage instead of demo memory.",
       implementerAction: "Apply schema, RLS, seed organization/property rows, set the organization id, configure backups and retention, then run the live RLS smoke.",
-      evidence: ["db/schema.sql", "db/rls.sql", "db/seed-sample.sql", "scripts/postgres-rls-smoke.mjs", "/admin/runtime"],
+      evidence: ["db/schema.sql", "db/rls.sql", "db/002-notification-lifecycle.sql", "db/003-weekly-owner-review.sql", "db/seed-sample.sql", "scripts/postgres-rls-smoke.mjs", "/admin/runtime"],
       commands: ["npm run db:rls:smoke"],
-      gate: "Live Postgres install passes RLS isolation, backups are configured, and retention/deletion ownership is documented."
+      gate: "Live Postgres install passes RLS isolation for intake, notification, and weekly evidence tables; backups and retention/deletion ownership are documented."
     },
     {
       id: "intake-and-support",
@@ -95,9 +95,9 @@ export function createInstallProofPacket() {
       status: hasAgentSubstrate ? "manual" : "configure",
       ownerOutcome: "Specialist agents can draft listing copy, replies, support summaries, and weekly reviews inside approved-facts boundaries.",
       implementerAction: "Pair with property-os-template, configure MCP and agent runtime endpoints, and dry-run every agent role before owner handoff.",
-      evidence: ["property-os-template", "MCP capability map", "agent run ledger", "approval records"],
-      commands: ["npm run agent:dry-run", "npm run install:proof"],
-      gate: "Agents draft only; pricing, availability, lease, legal, payment, repair, access, and publication outputs require owner approval."
+      evidence: ["property-os-template", "/admin/control-center", "/api/agent-missions", "agent mission and run ledgers", "MCP authority contract"],
+      commands: ["npm run agent:dry-run", "npm run mcp:smoke", "npm run install:proof"],
+      gate: "The portal records missions through authenticated MCP without a silent local fallback; agents still draft only and consequential outputs require owner approval."
     },
     {
       id: "listing-operations",
@@ -114,10 +114,20 @@ export function createInstallProofPacket() {
       title: "Owner notification and escalation route",
       status: hasNotifications ? "manual" : "configure",
       ownerOutcome: "Urgent support and approval-required work reaches the owner without exposing secrets or private renter records.",
-      implementerAction: "Configure owner email or webhook, decide email/WhatsApp/n8n/Make/Railway worker path, and review notification templates.",
-      evidence: ["OWNER_NOTIFICATION_EMAIL", "OWNER_NOTIFICATION_WEBHOOK_URL", "lib/owner-notifications.ts", "support classification"],
-      commands: ["npm run smoke"],
-      gate: "Owner receives urgent and approval notices with sanitized summaries, no access secrets, and a clear escalation owner."
+      implementerAction: "Apply the notification migration, configure signed primary and fallback webhooks plus the scoped worker, run lifecycle smoke, and capture a deployed owner acknowledgement.",
+      evidence: ["db/002-notification-lifecycle.sql", "docs/notification-lifecycle.md", "/admin/notifications", "notification event ledger"],
+      commands: ["npm run notification:smoke", "npm run db:rls:smoke"],
+      gate: "Urgent delivery, bounded retry, acknowledgement timeout, fallback, and owner acknowledgement each leave sanitized tenant-scoped receipts."
+    },
+    {
+      id: "weekly-measurement",
+      title: "Weekly owner review and metric evidence",
+      status: hasDatabase ? "manual" : "configure",
+      ownerOutcome: "The owner completes one short weekly review with honest target, gap, and unmeasured evidence instead of vanity analytics.",
+      implementerAction: "Apply the weekly review migration, run the smoke and visual checks, then archive one live five-metric review with Keep, Change, and Stop decisions.",
+      evidence: ["db/003-weekly-owner-review.sql", "docs/weekly-owner-review.md", "/admin/ops", "weekly metric observation ledger"],
+      commands: ["npm run weekly:smoke", "npm run weekly:visual", "npm run db:rls:smoke"],
+      gate: "One tenant-scoped production review preserves met, not-met, and unmeasured states, and completion performs zero external actions."
     },
     {
       id: "release-and-business-handoff",
@@ -125,8 +135,8 @@ export function createInstallProofPacket() {
       status: "manual",
       ownerOutcome: "The install is ready for premium owner use, partner delivery, or managed-service onboarding with clear proof and pricing path.",
       implementerAction: "Run final checks, verify Vercel preview on desktop and mobile, export proof packet, and package the offer ladder for the owner or agency.",
-      evidence: ["TEMPLATE_READINESS.md", "docs/self-service-install.md", "docs/implementation-cockpit.md", "docs/success-criteria.md"],
-      commands: ["npm run validate", "npm run typecheck", "npm run build", "npm run smoke", "npm run auth:smoke", "npm run install:proof"],
+      evidence: ["TEMPLATE_READINESS.md", "docs/self-service-install.md", "docs/implementation-cockpit.md", "docs/success-criteria.md", "design-loop-evidence.json"],
+      commands: ["npm run validate", "npm run typecheck", "npm run build", "npm run smoke", "npm run auth:smoke", "npm run visual:qa", "npm run audit", "npm run install:proof"],
       gate: "Owner approves preview, proof packet, private-data boundary, support scope, and go-live checklist before production."
     }
   ];
@@ -157,8 +167,50 @@ export function createInstallProofPacket() {
       requiresLiveSecret: false
     },
     {
+      command: "npm run mcp:smoke",
+      purpose: "Verify the authenticated portal-to-MCP mission contract and partial-configuration denial.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
       command: "npm run auth:smoke",
       purpose: "Protected owner/admin pages and APIs reject anonymous access and accept only approved access.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run visual:qa",
+      purpose: "Capture exact desktop/mobile evidence and reject horizontal overflow or clipped control text.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run notification:smoke",
+      purpose: "Prove signed outbox delivery, retry, urgent fallback, idempotent acknowledgement, and zero downstream actions.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run notification:visual",
+      purpose: "Capture exact desktop/mobile notification operations evidence and reject clipped lifecycle state or navigation.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run weekly:smoke",
+      purpose: "Prove idempotent weekly start and completion, five honest metrics, immutable replay, and zero downstream actions.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run weekly:visual",
+      purpose: "Capture exact desktop/mobile weekly evidence and reject overflow, clipped decisions, or unstable navigation.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run audit",
+      purpose: "Reject known moderate-or-higher dependency vulnerabilities.",
       requiredBefore: "owner-preview",
       requiresLiveSecret: false
     },
@@ -213,6 +265,9 @@ export function createInstallProofPacket() {
     publicSafety: {
       secretHandling: "The proof packet reports environment key names and configured booleans only; it does not print secret values.",
       dataBoundary: "Approved property facts live in GitHub content; renter submissions and approvals belong in protected runtime storage.",
+      databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
+      notificationBoundary: "The outbox stores sanitized summaries and hashes only; signed delivery and acknowledgement never send renter replies or dispatch work.",
+      measurementBoundary: "Weekly evidence preserves unmeasured states and the zero-action observation covers only this product's governed action surface.",
       automationBoundary: "Agents draft and summarize only; consequential renter, listing, pricing, legal, access, repair, and payment actions require owner approval."
     }
   };

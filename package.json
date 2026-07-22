@@ -1,6 +1,6 @@
 {
   "name": "property-portal-template",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Premium Next.js renter portal and owner dashboard for Property Intelligence OS.",
   "license": "MIT",
   "private": true,
@@ -15,28 +15,45 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs",
+    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs && node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
     "privacy": "node scripts/privacy-scan.mjs",
     "agent:dry-run": "node --experimental-strip-types scripts/agent-dry-run.mjs",
+    "mcp:smoke": "node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
     "smoke": "node scripts/e2e-smoke.mjs",
     "auth:smoke": "node scripts/auth-boundary-smoke.mjs",
+    "identity:smoke": "node --experimental-strip-types scripts/identity-policy-smoke.mjs && node --experimental-strip-types scripts/oidc-token-smoke.mjs && node scripts/identity-schema-contract.mjs",
+    "identity:db:smoke": "node --experimental-strip-types scripts/oidc-database-smoke.mjs",
+    "notification:smoke": "node scripts/notification-lifecycle-smoke.mjs",
+    "notification:visual": "node scripts/notification-visual-qa.mjs",
+    "weekly:smoke": "node scripts/weekly-review-smoke.mjs",
+    "weekly:visual": "node scripts/weekly-review-visual-qa.mjs",
     "auth:hash": "node scripts/generate-owner-passcode-hash.mjs",
-    "install:proof": "node scripts/install-proof-packet.mjs",
-    "db:rls:smoke": "node scripts/postgres-rls-smoke.mjs"
+    "install:proof": "node --experimental-strip-types scripts/install-proof-packet.mjs",
+    "db:rls:smoke": "node scripts/postgres-rls-smoke.mjs",
+    "visual:qa": "node scripts/visual-qa.mjs",
+    "audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
-    "next": "15.5.19",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "better-auth": "1.6.23",
+    "next": "^16.2.11",
+    "pg": "^8.22.0",
     "postgres": "^3.4.7",
-    "react": "19.0.0",
-    "react-dom": "19.0.0"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "22.13.10",
+    "@types/pg": "^8.20.0",
     "@types/react": "19.0.12",
     "@types/react-dom": "19.0.4",
+    "playwright-core": "^1.61.1",
     "typescript": "5.8.2"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "@hono/node-server": "2.0.11",
+    "postcss": "8.5.10",
+    "sharp": "0.35.3"
   }
 }
