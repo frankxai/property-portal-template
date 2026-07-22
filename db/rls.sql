@@ -31,6 +31,8 @@ alter table knowledge_articles enable row level security;
 alter table listing_drafts enable row level security;
 alter table inquiries enable row level security;
 alter table support_tickets enable row level security;
+alter table notification_deliveries enable row level security;
+alter table notification_events enable row level security;
 alter table approvals enable row level security;
 alter table agent_runs enable row level security;
 alter table agent_missions enable row level security;
@@ -48,6 +50,8 @@ alter table knowledge_articles force row level security;
 alter table listing_drafts force row level security;
 alter table inquiries force row level security;
 alter table support_tickets force row level security;
+alter table notification_deliveries force row level security;
+alter table notification_events force row level security;
 alter table approvals force row level security;
 alter table agent_runs force row level security;
 alter table agent_missions force row level security;
@@ -83,6 +87,18 @@ create policy inquiries_tenant_isolation on inquiries
 
 drop policy if exists support_tickets_tenant_isolation on support_tickets;
 create policy support_tickets_tenant_isolation on support_tickets
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists notification_deliveries_tenant_isolation on notification_deliveries;
+create policy notification_deliveries_tenant_isolation on notification_deliveries
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists notification_events_tenant_isolation on notification_events;
+create policy notification_events_tenant_isolation on notification_events
   for all
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());

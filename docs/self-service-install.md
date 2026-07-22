@@ -37,6 +37,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run notification:smoke
 npm run mcp:smoke
 npm run install:proof
 ```
@@ -70,7 +71,9 @@ Production requires more than a green build. The minimum gates are:
 - configure the MCP service model alias and AI Gateway secret on Railway, never in Vercel portal variables
 - run `npm run mcp:smoke`; a configured MCP failure must return `503` without local mission, evidence, draft, or review fallback
 - register one approved evidence record, run one structured draft by reference, and record one owner review outcome
-- configure owner notification by email, webhook, or worker
+- apply `db/002-notification-lifecycle.sql` to an existing portal database and rerun RLS proof
+- configure signed primary and fallback webhooks plus the scoped notification worker token
+- run `npm run notification:smoke`, then archive one deployed urgent delivery, fallback, and owner acknowledgement receipt
 - document backups, retention, and deletion ownership
 - complete desktop and mobile preview QA
 - keep legal, pricing, availability, access, repair, payment, lease, refund, and listing publication decisions under owner approval

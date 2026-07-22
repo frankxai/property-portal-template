@@ -611,6 +611,102 @@ select {
   color: #ffe7b6;
 }
 
+.notification-toolbar {
+  align-items: flex-end;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.notification-toolbar > *,
+.notification-grid,
+.notification-card,
+.notification-card > * {
+  min-width: 0;
+}
+
+.notification-page-title {
+  font-size: clamp(36px, 4vw, 56px);
+  line-height: 1.02;
+}
+
+.notification-metrics {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.notification-toolbar h2 {
+  font-size: 32px;
+  line-height: 1.05;
+}
+
+.notification-toolbar h2,
+.notification-card h3 {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.notification-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.notification-card .row {
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.notification-card p,
+.notification-card code,
+.notification-card dt,
+.notification-card dd {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.notification-card .proof-line {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.notification-card .proof-line code {
+  display: block;
+  white-space: normal;
+  word-break: break-all;
+}
+
+.notification-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 0;
+}
+
+.notification-meta div {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+
+.notification-meta dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.notification-meta dd {
+  margin: 4px 0 0;
+}
+
+.notification-card .button-secondary {
+  justify-self: start;
+}
+
+@media (max-width: 760px) {
+  .notification-metrics,
+  .notification-grid,
+  .notification-meta {
+    grid-template-columns: 1fr;
+  }
+}
+
 .workbench {
   display: grid;
   gap: 24px;
@@ -1015,7 +1111,12 @@ button:disabled {
   }
 
   .nav {
+    position: relative;
     padding-bottom: 12px;
+  }
+
+  .brand span {
+    display: none;
   }
 
   .shell,
@@ -1034,11 +1135,23 @@ button:disabled {
   }
 
   .nav-links {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     width: 100%;
+    overflow-x: visible;
   }
 
-  .nav-links a {
-    padding: 0 12px;
+  .nav-links a,
+  .nav-menu summary {
+    width: 100%;
+    min-width: 0;
+    padding: 0 8px;
+    font-size: 13px;
+    white-space: normal;
+  }
+
+  .nav-menu-panel {
+    top: 146px;
   }
 
   .shell,

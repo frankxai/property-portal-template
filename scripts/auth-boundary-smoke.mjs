@@ -73,7 +73,10 @@ try {
   await expectStatus("/properties/urban-haven-sample", 200);
   await expectStatus("/owner", 307);
   await expectStatus("/admin/agent-workbench", 307);
+  await expectStatus("/admin/notifications", 307);
   await expectStatus("/api/runtime/snapshot", 401);
+  await expectStatus("/api/notifications", 401);
+  await expectStatus("/api/notifications/process", 503, { method: "POST" });
   await expectStatus("/api/approved-evidence", 401, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -111,6 +114,9 @@ try {
     headers: { cookie }
   });
   await expectStatus("/admin/agent-workbench", 200, {
+    headers: { cookie }
+  });
+  await expectStatus("/admin/notifications", 200, {
     headers: { cookie }
   });
 

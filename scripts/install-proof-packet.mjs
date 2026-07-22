@@ -7,7 +7,11 @@ const packageJson = JSON.parse(await readFile(path.join(root, "package.json"), "
 const requiredEnv = [
   "DATABASE_URL",
   "APP_BASE_URL",
-  "OWNER_NOTIFICATION_EMAIL",
+  "OWNER_NOTIFICATION_WEBHOOK_URL",
+  "OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET",
+  "OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL",
+  "OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET",
+  "OWNER_NOTIFICATION_WORKER_TOKEN",
   "OWNER_PORTAL_SECRET",
   "OWNER_PORTAL_PASSCODE_HASH"
 ];
@@ -21,7 +25,12 @@ const optionalEnv = [
   "MCP_SERVER_ACCESS_TOKEN",
   "MCP_SERVER_ORIGIN",
   "MCP_REQUEST_TIMEOUT_MS",
-  "OWNER_NOTIFICATION_WEBHOOK_URL"
+  "OWNER_NOTIFICATION_MAX_ATTEMPTS",
+  "OWNER_NOTIFICATION_RETRY_BASE_MS",
+  "OWNER_NOTIFICATION_ACK_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_CLAIM_LEASE_MS",
+  "OWNER_NOTIFICATION_REQUEST_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_BATCH_SIZE"
 ];
 
 const requiredFiles = [
@@ -52,6 +61,12 @@ const requiredFiles = [
   "scripts/visual-qa.mjs",
   "scripts/postgres-rls-smoke.mjs",
   "scripts/mcp-control-plane-smoke.mjs",
+  "scripts/notification-lifecycle-smoke.mjs",
+  "scripts/notification-visual-qa.mjs",
+  "db/002-notification-lifecycle.sql",
+  "docs/notification-lifecycle.md",
+  "app/admin/notifications/page.tsx",
+  "app/api/notifications/process/route.ts",
   "docs/self-service-install.md",
   "docs/implementation-cockpit.md",
   "docs/agent-control-center-spec.md",
@@ -71,6 +86,13 @@ async function fileStatus(file) {
 
 const fileEvidence = await Promise.all(requiredFiles.map(fileStatus));
 const missingEnv = requiredEnv.filter((name) => !process.env[name]);
+const notificationReady = Boolean(
+  process.env.OWNER_NOTIFICATION_WEBHOOK_URL &&
+  process.env.OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET &&
+  process.env.OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL &&
+  process.env.OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET &&
+  process.env.OWNER_NOTIFICATION_WORKER_TOKEN
+);
 const phases = [
   {
     id: "fork-and-deploy",
@@ -90,12 +112,17 @@ const phases = [
   {
     id: "runtime-database",
     status: process.env.DATABASE_URL ? "manual" : "configure",
-    gate: "Live RLS smoke passes against the dedicated portal database; Railway uses a separate control-plane database."
+    gate: "Live RLS smoke covers the notification outbox/event tables in the dedicated portal database; Railway uses a separate control-plane database."
   },
   {
     id: "agent-substrate",
     status: process.env.MCP_SERVER_URL && process.env.MCP_SERVER_ACCESS_TOKEN ? "manual" : "configure",
     gate: "Mission, approved evidence, structured draft, and owner review pass through authenticated MCP without silent fallback; external actions remain blocked."
+  },
+  {
+    id: "owner-notifications",
+    status: notificationReady ? "manual" : "configure",
+    gate: "Signed primary delivery, retry, urgent fallback, and owner acknowledgement leave tenant-scoped receipts."
   },
   {
     id: "release-and-business-handoff",
@@ -128,6 +155,8 @@ const packet = {
     "npm run build",
     "npm run smoke",
     "npm run auth:smoke",
+    "npm run notification:smoke",
+    "npm run notification:visual",
     "npm run mcp:smoke",
     "npm run visual:qa",
     "npm run audit",
@@ -138,6 +167,7 @@ const packet = {
     secretHandling: "This CLI reports environment key names and configured booleans only; it does not print secret values.",
     dataBoundary: "Approved facts live in GitHub content; private renter submissions belong in runtime storage.",
     databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
+    notificationBoundary: "The outbox stores sanitized summaries and hashes only; signed delivery and acknowledgement never send renter replies or dispatch work.",
     automationBoundary: "Agents draft from server-approved evidence only. Owner review records an outcome but does not apply or send content."
   }
 };

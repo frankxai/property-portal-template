@@ -18,6 +18,7 @@ const routes = [
   "/admin/setup",
   "/admin/implementation",
   "/admin/runtime",
+  "/admin/notifications",
   "/admin/listings",
   "/admin/integrations",
   "/admin/control-center",
@@ -182,7 +183,7 @@ async function expectRuntimeSnapshot() {
   }
 
   const payload = await response.json();
-  if (!payload.health?.adapter || !payload.counts || !Array.isArray(payload.productionNotes)) {
+  if (!payload.health?.adapter || !payload.counts || !payload.notificationSummary || !Array.isArray(payload.productionNotes)) {
     throw new Error("/api/runtime/snapshot did not expose health, counts, and production notes");
   }
 }
@@ -230,6 +231,11 @@ try {
     "Approved evidence",
     "Generate governed draft",
     "No draft generated"
+  ]);
+  await expectPageContains("/admin/notifications", [
+    "Know what reached the owner",
+    "Owner acknowledgement queue",
+    "No notification receipts exist yet"
   ]);
 
   await expectGovernedWriteLocked("/api/approved-evidence", {

@@ -27,6 +27,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/admin/setup`: owner setup checklist and missing-fact workflow
 - `/admin/implementation`: installation readiness, agent architecture, production gates, and partner offer ladder
 - `/admin/runtime`: runtime storage, notification, capability, and queue posture
+- `/admin/notifications`: signed delivery, retry, fallback, and owner acknowledgement ledger
 - `/admin/listings`: listing draft studio
 - `/admin/integrations`: approved/manual/planned integration cockpit
 - `/admin/control-center`: specialist missions, authority boundary, runtime posture, lifecycle, and outcome scorecard
@@ -44,6 +45,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run notification:smoke
 npm run visual:qa
 npm run audit
 npm run install:proof
@@ -67,13 +69,15 @@ Runtime APIs:
 - `/api/agent-drafts`: approved-evidence structured draft through MCP; no local fallback
 - `/api/agent-run-reviews`: owner accept, revise, or reject outcome through MCP; no content apply
 
-Production database order:
+Production database order for a fresh install:
 
 1. Apply `db/schema.sql`.
 2. Apply `db/rls.sql`.
 3. Seed with `db/seed-sample.sql` or a private owner seed.
 4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
 5. Verify `/admin/runtime` in the deployed preview before real renter data.
+
+Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql`, rerun `db/rls.sql`, and rerun `npm run db:rls:smoke` before enabling the notification worker.
 
 ## Implementation Cockpit
 
@@ -96,6 +100,10 @@ The route `/admin/setup` includes the install proof cockpit: proof score, runtim
 The protected API route `/api/install/proof-packet` exposes the same evidence for partner audits and onboarding automation. The local command `npm run install:proof` prints a public-safe JSON proof packet that reports environment key names and configured booleans only; it does not print secret values.
 
 Generate the upstream configuration packet in `property-os-template` with `npm run install:plan -- --config <public-safe-config.json>`, then attach its hashes and this portal's live proof packet to the handoff.
+
+## Owner Notifications
+
+Notifications use a durable tenant-scoped outbox and append-only event ledger. A separately authenticated worker sends HMAC-signed, sanitized webhooks, retries with bounded backoff, triggers the fallback route when urgent acknowledgement is late, and exposes evidence at `/admin/notifications`. See `docs/notification-lifecycle.md` and run `npm run notification:smoke` after the production build.
 
 ## V1 Safety
 

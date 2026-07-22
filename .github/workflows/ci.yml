@@ -36,3 +36,6 @@ jobs:
       - name: Auth boundary smoke
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         run: npm run auth:smoke
+      - name: Notification lifecycle smoke
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        run: npm run notification:smoke

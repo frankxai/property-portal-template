@@ -35,6 +35,8 @@ Production installs should:
 9. configure the MCP endpoint, origin, and access token backed by a separate control-plane logical database, then run `npm run mcp:smoke`
 10. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
 
+Existing databases also apply `db/002-notification-lifecycle.sql`, rerun `db/rls.sql`, and rerun the live RLS smoke.
+
 The adapter writes:
 
 - inquiries to `inquiries`
@@ -72,12 +74,18 @@ Install order:
 
 ## Owner Notifications
 
-Notifications are intentionally separate from storage.
+Notifications use a transactional outbox inside the portal database and a scoped delivery worker. Intake writes the sanitized notification and payload hash before any provider request. The worker owns signed delivery, bounded retry, urgent fallback, and acknowledgement timeout processing.
 
 Environment:
 
-- `OWNER_NOTIFICATION_EMAIL`: owner target, used for setup and future email worker routing
+- `OWNER_NOTIFICATION_WEBHOOK_URL` and `OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET`: signed primary owner route
+- `OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL` and `OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET`: separately signed urgent fallback route
+- `OWNER_NOTIFICATION_WORKER_TOKEN`: scoped queue-processing credential
 - `OWNER_NOTIFICATION_WEBHOOK_URL`: optional webhook for n8n, Make, Railway worker, or email service bridge
+- `OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET`: HMAC key for the primary receiver
+- `OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL`: separate urgent fallback receiver
+- `OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET`: HMAC key for the fallback receiver
+- `OWNER_NOTIFICATION_WORKER_TOKEN`: scoped bearer accepted only by `/api/notifications/process`
 
 Webhook payloads include only:
 
@@ -88,8 +96,11 @@ Webhook payloads include only:
 - sanitized summary
 - owner action
 - timestamp
+- payload hash and protected acknowledgement URL
 
 They do not include access secrets, payment data, private addresses, identity documents, lease details, or full renter messages.
+
+Use `/admin/notifications` to inspect delivery evidence and acknowledge an item. Acknowledgement stops retries and records an append-only event; it never sends a reply or dispatches work. See `docs/notification-lifecycle.md`.
 
 ## Production Gates
 
@@ -103,6 +114,7 @@ Do not put real renter data through the portal until:
 - retention and deletion policy is defined
 - backups are enabled
 - owner notification failure path is tested
+- `npm run notification:smoke` passes and the deployed primary/fallback provider receipts are archived
 - Vercel preview is reviewed
 - support ownership is explicit
 

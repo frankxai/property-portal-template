@@ -8,6 +8,9 @@ const implementationSource = await readFile(path.join(process.cwd(), "lib", "imp
 const installProofSource = await readFile(path.join(process.cwd(), "lib", "install-proof.ts"), "utf8");
 const runtimeStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
 const controlPlaneSource = await readFile(path.join(process.cwd(), "lib", "agent-control-plane.ts"), "utf8");
+const notificationPolicySource = await readFile(path.join(process.cwd(), "lib", "notification-policy.ts"), "utf8");
+const notificationWorkerSource = await readFile(path.join(process.cwd(), "lib", "notification-worker.ts"), "utf8");
+const notificationStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
 const authSource = await readFile(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
 const schemaSource = await readFile(path.join(process.cwd(), "db", "schema.sql"), "utf8");
 const rlsSource = await readFile(path.join(process.cwd(), "db", "rls.sql"), "utf8");
@@ -36,6 +39,17 @@ await readFile(path.join(process.cwd(), "docs", "agent-workbench-spec.md"), "utf
 await readFile(path.join(process.cwd(), "design-loop-evidence.json"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "runtime-adapter.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "owner-auth.md"), "utf8");
+const notificationDocsSource = await readFile(path.join(process.cwd(), "docs", "notification-lifecycle.md"), "utf8");
+await readFile(path.join(process.cwd(), "db", "002-notification-lifecycle.sql"), "utf8");
+await readFile(path.join(process.cwd(), "app", "admin", "notifications", "page.tsx"), "utf8");
+await readFile(path.join(process.cwd(), "components", "NotificationCenter.tsx"), "utf8");
+await readFile(path.join(process.cwd(), "app", "api", "notifications", "route.ts"), "utf8");
+await readFile(path.join(process.cwd(), "app", "api", "notifications", "process", "route.ts"), "utf8");
+await readFile(path.join(process.cwd(), "app", "api", "notifications", "[id]", "acknowledge", "route.ts"), "utf8");
+await readFile(path.join(process.cwd(), "scripts", "notification-lifecycle-smoke.mjs"), "utf8");
+await readFile(path.join(process.cwd(), "scripts", "notification-visual-qa.mjs"), "utf8");
+await readFile(path.join(process.cwd(), "artifacts", "visual-qa", "notifications-desktop.png"));
+await readFile(path.join(process.cwd(), "artifacts", "visual-qa", "notifications-mobile.png"));
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "install-support.md"), "utf8");
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "integration-request.md"), "utf8");
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "safety-review.md"), "utf8");
@@ -102,7 +116,8 @@ const requiredInstallProofSnippets = [
   "does not print secret values",
   "ownerApprovalRequiredFor",
   "blockedV1Actions",
-  "separate tenant-isolated logical databases"
+  "separate tenant-isolated logical databases",
+  "npm run notification:smoke"
 ];
 
 const requiredRuntimeStoreSnippets = [
@@ -112,6 +127,10 @@ const requiredRuntimeStoreSnippets = [
   "persistApproval",
   "persistAgentRun",
   "persistAgentMission",
+  "persistNotification",
+  "claimDueNotificationDeliveries",
+  "completeNotificationDelivery",
+  "acknowledgeNotificationDelivery",
   "persistListingDryRun",
   "withOrganizationContext",
   "property_os.organization_id",
@@ -124,7 +143,9 @@ const requiredAuthSnippets = [
   "OWNER_PORTAL_SECRET",
   "OWNER_PORTAL_PASSCODE_HASH",
   "PROPERTY_OS_DEMO_AUTH",
-  "ownerSessionCookie"
+  "ownerSessionCookie",
+  "requireNotificationWorkerAccess",
+  "OWNER_NOTIFICATION_WORKER_TOKEN"
 ];
 
 const requiredControlPlaneSnippets = [
@@ -142,6 +163,8 @@ const requiredSchemaSnippets = [
   "transition_proposals",
   "approval_receipts",
   "controlled_transitions",
+  "notification_deliveries",
+  "notification_events",
   "unique (organization_id, idempotency_key)"
 ];
 
@@ -202,6 +225,8 @@ const requiredRlsSnippets = [
   "organizations_tenant_isolation",
   "properties_tenant_isolation",
   "support_tickets_tenant_isolation",
+  "notification_deliveries_tenant_isolation",
+  "notification_events_tenant_isolation",
   "agent_missions_tenant_isolation",
   "transition_proposals_tenant_isolation",
   "approval_receipts_tenant_isolation",
@@ -221,7 +246,26 @@ const requiredRlsSmokeSnippets = [
   "property_os_current_organization_id",
   "relrowsecurity",
   "relforcerowsecurity",
+  "notification_deliveries",
+  "notification_events",
   "RLS isolation failed"
+];
+
+const requiredNotificationPolicySnippets = [
+  "property-os.ownerNotification.v1",
+  "notificationPayloadHash",
+  "acknowledgementRequired",
+  "externalActionsPerformed: []",
+  "OWNER_NOTIFICATION_ACK_TIMEOUT_MS"
+];
+
+const requiredNotificationWorkerSnippets = [
+  "x-property-os-signature",
+  "x-property-os-idempotency-key",
+  "redirect: \"error\"",
+  "claimDueNotificationDeliveries",
+  "completeNotificationDelivery",
+  "externalActionsPerformed: []"
 ];
 
 const requiredAuthSmokeSnippets = [
@@ -238,6 +282,8 @@ const requiredInstallProofCliSnippets = [
   "app/api/install/proof-packet/route.ts",
   "does not print secret values",
   "npm run db:rls:smoke",
+  "npm run notification:smoke",
+  "notificationBoundary",
   "separate tenant-isolated logical databases"
 ];
 
@@ -255,8 +301,21 @@ const requiredSelfServiceInstallSnippets = [
   "does not print secret values",
   "npm run install:plan",
   "same logical database",
-  "OIDC"
+  "OIDC",
+  "npm run notification:smoke"
 ];
+
+for (const snippet of [
+  "transactional outbox",
+  "FOR UPDATE SKIP LOCKED",
+  "HMAC-SHA256",
+  "npm run notification:smoke",
+  "local mock pass is not delivery evidence"
+]) {
+  if (!notificationDocsSource.includes(snippet)) {
+    throw new Error(`docs/notification-lifecycle.md is missing ${snippet}`);
+  }
+}
 
 for (const snippet of requiredRuntimeSnippets) {
   if (!runtimeContracts.includes(snippet)) {
@@ -278,6 +337,24 @@ for (const snippet of requiredInstallProofSnippets) {
 
 for (const snippet of requiredRuntimeStoreSnippets) {
   if (!runtimeStoreSource.includes(snippet)) {
+    throw new Error(`lib/runtime-store.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredNotificationPolicySnippets) {
+  if (!notificationPolicySource.includes(snippet)) {
+    throw new Error(`lib/notification-policy.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredNotificationWorkerSnippets) {
+  if (!notificationWorkerSource.includes(snippet)) {
+    throw new Error(`lib/notification-worker.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of ["notification_deliveries", "notification_events", "notificationSummary"]) {
+  if (!notificationStoreSource.includes(snippet)) {
     throw new Error(`lib/runtime-store.ts is missing ${snippet}`);
   }
 }

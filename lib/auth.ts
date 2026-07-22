@@ -35,6 +35,10 @@ function apiToken() {
   return process.env.OWNER_PORTAL_API_TOKEN || "";
 }
 
+function notificationWorkerToken() {
+  return process.env.OWNER_NOTIFICATION_WORKER_TOKEN || "";
+}
+
 function demoAuthAllowed() {
   return process.env.PROPERTY_OS_DEMO_AUTH === "true" || (process.env.NODE_ENV !== "production" && !secret() && !passcodeHash());
 }
@@ -179,6 +183,23 @@ export async function requireOwnerApiAccess(request: Request) {
     },
     { status: status.mode === "locked" ? 503 : 401 }
   );
+}
+
+export function requireNotificationWorkerAccess(request: Request) {
+  const workerCredential = notificationWorkerToken();
+  if (!workerCredential) {
+    return NextResponse.json(
+      { error: "Notification worker is not configured", missingEnv: ["OWNER_NOTIFICATION_WORKER_TOKEN"] },
+      { status: 503 }
+    );
+  }
+
+  const authHeader = request.headers.get("authorization") || "";
+  const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice("Bearer ".length) : "";
+  if (!bearer || !safeEqual(bearer, workerCredential)) {
+    return NextResponse.json({ error: "Notification worker access required" }, { status: 401 });
+  }
+  return null;
 }
 
 export function ownerSessionCookieOptions() {

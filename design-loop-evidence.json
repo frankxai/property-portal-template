@@ -1,9 +1,9 @@
 {
   "version": "2026-07-22",
-  "task": "Add a premium governed agent workbench to the Property Portal template.",
-  "surface": "Protected operational workflow at /admin/agent-workbench",
+  "task": "Add a premium governed agent workbench and auditable owner-notification console to the Property Portal template.",
+  "surface": "Protected operational workflows at /admin/agent-workbench and /admin/notifications",
   "audience": "Independent property owners, boutique agencies, and implementation partners",
-  "first_read": "One bounded mission moving through approved evidence, structured draft, immutable proof, and owner review with zero external action.",
+  "first_read": "Bounded agent work and owner escalation are visible as durable, reviewable state; no approval or acknowledgement performs an external commitment.",
   "standards": [
     "design-agent-standards/OUTCOMES.md",
     "design-agent-standards/AGENTIC_DESIGN_LOOP.md",
@@ -20,7 +20,7 @@
   "direction": {
     "keep": ["dense calm hierarchy", "restrained status color", "visible owner approval", "stable responsive controls"],
     "avoid": ["generic SaaS cards", "decorative gradients", "agent theater", "oversized dashboard typography"],
-    "signature": "Every workflow stage earns the next stage through a durable server receipt, ending in a decision that still performs no external action.",
+    "signature": "Every workflow stage earns the next stage through durable receipts, while urgent delivery, fallback, and owner acknowledgement remain separately auditable.",
     "system": ["existing portal typography", "6px and 8px radii", "teal for controlled state", "amber for owner review", "full-width operational bands"]
   },
   "asset_quality": {
@@ -43,14 +43,27 @@
       "kind": "ui",
       "inspected": true,
       "notes": "Playwright-core full-page capture at 390x844; intentional stack, readable controls, multiline metric, tap targets, and page width inspected."
+    },
+    {
+      "path_or_url": "artifacts/visual-qa/notifications-desktop.png",
+      "kind": "ui",
+      "inspected": true,
+      "notes": "Playwright-core full-page capture at 1440x1200; lifecycle posture, four-column metrics, urgent queue, proof hash, and acknowledgement action inspected."
+    },
+    {
+      "path_or_url": "artifacts/visual-qa/notifications-mobile.png",
+      "kind": "ui",
+      "inspected": true,
+      "notes": "Playwright-core full-page capture at 390x844; stable three-column navigation, one-column lifecycle stack, wrapped proof hash, tap targets, and page width inspected."
     }
   ],
   "checks": [
     { "name": "asset-tier", "status": "pass", "evidence": "Tier C product UI is the correct medium for an owner operations console." },
-    { "name": "export-inspection", "status": "pass", "evidence": "Owned full-page workbench captures were inspected at 1440px desktop and 390px mobile." },
-    { "name": "visual-qa", "status": "pass", "evidence": "Root overflow and clipped-control checks passed at both viewports; the Operations menu stays in viewport and the locked state remains coherent." }
+    { "name": "export-inspection", "status": "pass", "evidence": "Owned full-page workbench and notification captures were inspected at 1440px desktop and 390px mobile." },
+    { "name": "visual-qa", "status": "pass", "evidence": "Root overflow, clipped text, navigation width, and menu viewport checks passed at both viewports; locked and not-configured states remain coherent." },
+    { "name": "notification-authority", "status": "pass", "evidence": "The console distinguishes delivery, failure, fallback, and owner acknowledgement without presenting acknowledgement as authorization to contact a renter or vendor." }
   ],
-  "score": { "total": 27, "max": 30, "notes": "Strong first read, operational hierarchy, evidence specificity, responsive composition, and explicit authority. Final points require connected-runtime and repeated owner usability evidence." },
+  "score": { "total": 28, "max": 30, "notes": "Strong first read, operational hierarchy, evidence specificity, stable small-screen navigation, and explicit authority. Final points require connected-runtime and repeated owner usability evidence." },
   "decision": "ship",
-  "known_risks": ["Sample property media remains unsuitable for a real client launch.", "Live generation depends on a separately deployed MCP runtime, database, and model provider configuration."]
+  "known_risks": ["Sample property media remains unsuitable for a real client launch.", "Live generation depends on a separately deployed MCP runtime, database, and model provider configuration.", "A local webhook proof is not live provider-delivery evidence; production acceptance still requires timestamped primary and fallback receipts."]
 }

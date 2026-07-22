@@ -1,6 +1,7 @@
 import postgres from "postgres";
 import type { AgentMission, AgentRunPayload, ApprovalRecord, AuditEvent, ListingDryRunPayload } from "@/lib/runtime-contracts";
-import { runtimeHealth } from "@/lib/runtime-contracts";
+import { createRuntimeId, runtimeHealth } from "@/lib/runtime-contracts";
+import { notificationPolicy, retryAt, type NotificationAction, type NotificationDelivery } from "@/lib/notification-policy";
 import type { InquiryPayload, SupportPayload } from "@/lib/types";
 
 export type RuntimePersistenceReceipt = {
@@ -25,12 +26,20 @@ export type RuntimeSnapshot = {
   counts: Record<RuntimeQueueItem["kind"] | "audit", number>;
   recentQueue: RuntimeQueueItem[];
   recentAudit: AuditEvent[];
+  recentNotifications: NotificationDelivery[];
+  notificationSummary: {
+    queued: number;
+    urgentUnacknowledged: number;
+    failures: number;
+    acknowledged: number;
+  };
   productionNotes: string[];
 };
 
 type DemoState = {
   queue: RuntimeQueueItem[];
   audit: AuditEvent[];
+  notifications: NotificationDelivery[];
 };
 
 declare global {
@@ -39,8 +48,10 @@ declare global {
 
 const demoState = globalThis.__propertyPortalRuntimeState ??= {
   queue: [],
-  audit: []
+  audit: [],
+  notifications: []
 };
+demoState.notifications ??= [];
 
 let sqlClient: postgres.Sql | undefined;
 
@@ -70,6 +81,61 @@ function failureReceipt(adapter: RuntimePersistenceReceipt["adapter"], target: s
     status: "failed",
     target,
     detail: "Runtime write failed. Keep the manual owner workflow active and inspect server logs."
+  };
+}
+
+function toIso(value: Date | string | null | undefined) {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function notificationFromRow(row: Record<string, unknown>): NotificationDelivery {
+  return {
+    id: String(row.id),
+    sourceId: String(row.source_id),
+    kind: row.kind as NotificationDelivery["kind"],
+    urgency: row.urgency as NotificationDelivery["urgency"],
+    route: String(row.route),
+    sanitizedSummary: String(row.sanitized_summary),
+    ownerAction: String(row.owner_action),
+    payloadHash: String(row.payload_hash),
+    status: row.status as NotificationDelivery["status"],
+    primaryTarget: row.primary_target as NotificationDelivery["primaryTarget"],
+    fallbackTarget: row.fallback_target as NotificationDelivery["fallbackTarget"],
+    primaryAttemptCount: Number(row.primary_attempt_count),
+    fallbackAttemptCount: Number(row.fallback_attempt_count),
+    processingAction: row.processing_action ? row.processing_action as NotificationAction : null,
+    nextAttemptAt: toIso(row.next_attempt_at as Date | string | null),
+    claimUntil: toIso(row.claim_until as Date | string | null),
+    lastAttemptAt: toIso(row.last_attempt_at as Date | string | null),
+    deliveredAt: toIso(row.delivered_at as Date | string | null),
+    fallbackDeliveredAt: toIso(row.fallback_delivered_at as Date | string | null),
+    acknowledgedAt: toIso(row.acknowledged_at as Date | string | null),
+    acknowledgedBy: row.acknowledged_by ? String(row.acknowledged_by) : null,
+    lastErrorCode: row.last_error_code ? String(row.last_error_code) : null,
+    createdAt: toIso(row.created_at as Date | string) as string,
+    updatedAt: toIso(row.updated_at as Date | string) as string
+  };
+}
+
+function notificationQueueItem(delivery: NotificationDelivery): RuntimeQueueItem {
+  return {
+    id: delivery.id,
+    kind: "notification",
+    route: delivery.route,
+    sanitizedSummary: `${delivery.kind}: ${delivery.sanitizedSummary}`,
+    ownerAction: delivery.ownerAction,
+    ownerApprovalRequired: true,
+    createdAt: delivery.createdAt
+  };
+}
+
+function notificationSummary(deliveries: NotificationDelivery[]) {
+  return {
+    queued: deliveries.filter((item) => ["queued", "processing", "failed", "fallback-required", "fallback-failed"].includes(item.status)).length,
+    urgentUnacknowledged: deliveries.filter((item) => item.urgency === "urgent" && item.status !== "acknowledged").length,
+    failures: deliveries.filter((item) => ["failed", "fallback-required", "fallback-failed"].includes(item.status)).length,
+    acknowledged: deliveries.filter((item) => item.status === "acknowledged").length
   };
 }
 
@@ -325,39 +391,381 @@ export async function persistListingDryRun(input: {
   }
 }
 
-export async function persistNotification(item: RuntimeQueueItem): Promise<RuntimePersistenceReceipt> {
+async function insertNotificationEvent(
+  sql: postgres.Sql,
+  delivery: NotificationDelivery,
+  input: {
+    eventType: "queued" | "claimed" | "delivery-succeeded" | "delivery-failed" | "fallback-required" | "fallback-succeeded" | "fallback-failed" | "acknowledged";
+    action?: NotificationAction | null;
+    attemptNumber?: number | null;
+    provider: "none" | "webhook" | "fallback-webhook" | "owner-portal";
+    errorCode?: string | null;
+    occurredAt: string;
+  }
+) {
+  await sql`
+    insert into notification_events (
+      id, organization_id, notification_id, event_type, action, attempt_number,
+      provider, payload_hash, error_code, metadata, occurred_at
+    ) values (
+      ${createRuntimeId("notif-event")}, ${organizationId()}, ${delivery.id}, ${input.eventType},
+      ${input.action ?? null}, ${input.attemptNumber ?? null}, ${input.provider},
+      ${delivery.payloadHash}, ${input.errorCode ?? null},
+      ${sql.json({ urgency: delivery.urgency, route: delivery.route, status: delivery.status })},
+      ${input.occurredAt}
+    )
+  `;
+}
+
+export async function persistNotification(delivery: NotificationDelivery): Promise<RuntimePersistenceReceipt> {
   const sql = getSql();
-  if (!sql) return demoRecord(item);
+  if (!sql) {
+    demoState.notifications.unshift(delivery);
+    demoState.notifications = demoState.notifications.slice(0, 100);
+    return demoRecord(notificationQueueItem(delivery));
+  }
 
   try {
     await withOrganizationContext(sql, async (scopedSql) => {
       await scopedSql`
-        insert into audit_events (id, organization_id, actor, event_type, subject_type, subject_id, metadata, created_at)
+        insert into notification_deliveries (
+          id, organization_id, source_id, kind, urgency, route, sanitized_summary,
+          owner_action, payload_hash, status, primary_target, fallback_target,
+          primary_attempt_count, fallback_attempt_count, processing_action,
+          next_attempt_at, claim_until, last_attempt_at, delivered_at,
+          fallback_delivered_at, acknowledged_at, acknowledged_by, last_error_code,
+          created_at, updated_at
+        )
         values (
-          ${item.id},
-          ${organizationId()},
-          'system',
-          'owner_notification.queued',
-          'notification',
-          ${item.id},
-          ${scopedSql.json({
-            route: item.route,
-            sanitizedSummary: item.sanitizedSummary,
-            ownerAction: item.ownerAction,
-            ownerApprovalRequired: item.ownerApprovalRequired
-          })},
-          ${item.createdAt}
+          ${delivery.id}, ${organizationId()}, ${delivery.sourceId}, ${delivery.kind},
+          ${delivery.urgency}, ${delivery.route}, ${delivery.sanitizedSummary},
+          ${delivery.ownerAction}, ${delivery.payloadHash}, ${delivery.status},
+          ${delivery.primaryTarget}, ${delivery.fallbackTarget},
+          ${delivery.primaryAttemptCount}, ${delivery.fallbackAttemptCount},
+          ${delivery.processingAction}, ${delivery.nextAttemptAt}, ${delivery.claimUntil},
+          ${delivery.lastAttemptAt}, ${delivery.deliveredAt}, ${delivery.fallbackDeliveredAt},
+          ${delivery.acknowledgedAt}, ${delivery.acknowledgedBy}, ${delivery.lastErrorCode},
+          ${delivery.createdAt}, ${delivery.updatedAt}
         )
       `;
+      await insertNotificationEvent(scopedSql, delivery, {
+        eventType: "queued",
+        provider: "none",
+        occurredAt: delivery.createdAt
+      });
     });
     return {
       adapter: "postgres",
       status: "recorded",
-      target: "audit_events",
-      detail: "Recorded sanitized notification handoff in Postgres audit events."
+      target: "notification_deliveries",
+      detail: "Recorded sanitized notification in the durable outbox before delivery."
     };
   } catch {
-    return failureReceipt("postgres", "audit_events");
+    return failureReceipt("postgres", "notification_deliveries");
+  }
+}
+
+export async function listNotificationDeliveries(limit = 25): Promise<NotificationDelivery[]> {
+  const boundedLimit = Math.max(1, Math.min(limit, 100));
+  const sql = getSql();
+  if (!sql) return demoState.notifications.slice(0, boundedLimit);
+
+  try {
+    const rows = await withOrganizationContext(sql, (scopedSql) => scopedSql`
+      select *
+      from notification_deliveries
+      where organization_id = ${organizationId()}
+      order by created_at desc
+      limit ${boundedLimit}
+    `);
+    return rows.map((row) => notificationFromRow(row));
+  } catch {
+    throw new Error("Notification delivery ledger unavailable.");
+  }
+}
+
+function dueNotificationAction(delivery: NotificationDelivery, now: Date, acknowledgementCutoff: Date, maxAttempts: number) {
+  const nextAttemptDue = !delivery.nextAttemptAt || new Date(delivery.nextAttemptAt) <= now;
+  if (delivery.status === "processing" && delivery.claimUntil && new Date(delivery.claimUntil) <= now) {
+    return delivery.processingAction;
+  }
+  if (["queued", "failed"].includes(delivery.status) && delivery.primaryAttemptCount < maxAttempts && nextAttemptDue) {
+    return "send-primary" as const;
+  }
+  if (
+    ["fallback-required", "fallback-failed"].includes(delivery.status) &&
+    delivery.fallbackTarget !== "none" &&
+    delivery.fallbackAttemptCount < maxAttempts &&
+    nextAttemptDue
+  ) {
+    return "send-fallback" as const;
+  }
+  if (
+    delivery.status === "sent" &&
+    delivery.urgency === "urgent" &&
+    delivery.deliveredAt &&
+    new Date(delivery.deliveredAt) <= acknowledgementCutoff
+  ) {
+    return "send-fallback" as const;
+  }
+  return null;
+}
+
+export async function claimDueNotificationDeliveries(input: {
+  now?: Date;
+  limit?: number;
+} = {}): Promise<Array<NotificationDelivery & { claimedAction: NotificationAction }>> {
+  const policy = notificationPolicy();
+  const now = input.now ?? new Date();
+  const limit = Math.max(1, Math.min(input.limit ?? policy.batchSize, policy.batchSize));
+  const claimUntil = new Date(now.getTime() + policy.claimLeaseMs).toISOString();
+  const acknowledgementCutoff = new Date(now.getTime() - policy.acknowledgementTimeoutMs);
+  const sql = getSql();
+
+  if (!sql) {
+    const claims: Array<NotificationDelivery & { claimedAction: NotificationAction }> = [];
+    for (const delivery of demoState.notifications) {
+      if (claims.length >= limit) break;
+      const action = dueNotificationAction(delivery, now, acknowledgementCutoff, policy.maxAttempts);
+      if (!action) continue;
+      delivery.status = "processing";
+      delivery.processingAction = action;
+      delivery.claimUntil = claimUntil;
+      delivery.updatedAt = now.toISOString();
+      claims.push({ ...delivery, claimedAction: action });
+    }
+    return claims;
+  }
+
+  try {
+    return await withOrganizationContext(sql, async (scopedSql) => {
+      const rows = await scopedSql`
+        with due as (
+          select id,
+            case
+              when status = 'processing' then processing_action
+              when status in ('queued', 'failed') then 'send-primary'
+              else 'send-fallback'
+            end as claimed_action
+          from notification_deliveries
+          where organization_id = ${organizationId()}
+            and (
+              (status in ('queued', 'failed')
+                and primary_attempt_count < ${policy.maxAttempts}
+                and (next_attempt_at is null or next_attempt_at <= ${now.toISOString()}))
+              or
+              (status in ('fallback-required', 'fallback-failed')
+                and fallback_target <> 'none'
+                and fallback_attempt_count < ${policy.maxAttempts}
+                and (next_attempt_at is null or next_attempt_at <= ${now.toISOString()}))
+              or
+              (status = 'sent'
+                and urgency = 'urgent'
+                and delivered_at <= ${acknowledgementCutoff.toISOString()})
+              or
+              (status = 'processing' and claim_until <= ${now.toISOString()})
+            )
+          order by case when urgency = 'urgent' then 0 else 1 end, created_at
+          for update skip locked
+          limit ${limit}
+        )
+        update notification_deliveries as delivery
+        set status = 'processing',
+            processing_action = due.claimed_action,
+            claim_until = ${claimUntil},
+            updated_at = ${now.toISOString()}
+        from due
+        where delivery.id = due.id
+        returning delivery.*
+      `;
+
+      const claims = rows.map((row) => ({
+        ...notificationFromRow(row),
+        claimedAction: row.processing_action as NotificationAction
+      }));
+      for (const delivery of claims) {
+        await insertNotificationEvent(scopedSql, delivery, {
+          eventType: "claimed",
+          action: delivery.claimedAction,
+          provider: "none",
+          occurredAt: now.toISOString()
+        });
+      }
+      return claims;
+    });
+  } catch {
+    throw new Error("Notification outbox claim failed.");
+  }
+}
+
+type NotificationCompletion = {
+  id: string;
+  action: NotificationAction;
+  succeeded: boolean;
+  providerConfigured: boolean;
+  errorCode?: string | null;
+  now?: Date;
+};
+
+function completedDelivery(
+  current: NotificationDelivery,
+  input: NotificationCompletion
+): { delivery: NotificationDelivery; eventType: "delivery-succeeded" | "delivery-failed" | "fallback-required" | "fallback-succeeded" | "fallback-failed"; attemptNumber: number; provider: "none" | "webhook" | "fallback-webhook" } {
+  const policy = notificationPolicy();
+  const now = input.now ?? new Date();
+  const timestamp = now.toISOString();
+  const delivery = { ...current, processingAction: null, claimUntil: null, lastAttemptAt: timestamp, updatedAt: timestamp };
+
+  if (input.action === "send-primary") {
+    const attempts = current.primaryAttemptCount + (input.providerConfigured ? 1 : 0);
+    delivery.primaryAttemptCount = attempts;
+    if (input.succeeded) {
+      delivery.status = "sent";
+      delivery.deliveredAt = timestamp;
+      delivery.nextAttemptAt = null;
+      delivery.lastErrorCode = null;
+      return { delivery, eventType: "delivery-succeeded", attemptNumber: attempts, provider: "webhook" };
+    }
+
+    delivery.lastErrorCode = input.errorCode ?? (input.providerConfigured ? "delivery-failed" : "provider-not-configured");
+    if (current.urgency === "urgent" && (!input.providerConfigured || attempts >= policy.maxAttempts)) {
+      delivery.status = "fallback-required";
+      delivery.nextAttemptAt = current.fallbackTarget === "none" ? null : timestamp;
+      return { delivery, eventType: "fallback-required", attemptNumber: attempts, provider: input.providerConfigured ? "webhook" : "none" };
+    }
+
+    delivery.status = "failed";
+    delivery.nextAttemptAt = input.providerConfigured && attempts < policy.maxAttempts ? retryAt(now, attempts, policy) : null;
+    return { delivery, eventType: "delivery-failed", attemptNumber: attempts, provider: input.providerConfigured ? "webhook" : "none" };
+  }
+
+  const attempts = current.fallbackAttemptCount + (input.providerConfigured ? 1 : 0);
+  delivery.fallbackAttemptCount = attempts;
+  if (input.succeeded) {
+    delivery.status = "fallback-sent";
+    delivery.fallbackDeliveredAt = timestamp;
+    delivery.nextAttemptAt = null;
+    delivery.lastErrorCode = null;
+    return { delivery, eventType: "fallback-succeeded", attemptNumber: attempts, provider: "fallback-webhook" };
+  }
+
+  delivery.lastErrorCode = input.errorCode ?? (input.providerConfigured ? "fallback-failed" : "fallback-not-configured");
+  delivery.status = input.providerConfigured ? "fallback-failed" : "fallback-required";
+  delivery.nextAttemptAt = input.providerConfigured && attempts < policy.maxAttempts ? retryAt(now, attempts, policy) : null;
+  return {
+    delivery,
+    eventType: input.providerConfigured ? "fallback-failed" : "fallback-required",
+    attemptNumber: attempts,
+    provider: input.providerConfigured ? "fallback-webhook" : "none"
+  };
+}
+
+export async function completeNotificationDelivery(input: NotificationCompletion): Promise<NotificationDelivery | null> {
+  const sql = getSql();
+  if (!sql) {
+    const index = demoState.notifications.findIndex((item) => item.id === input.id);
+    if (index < 0) return null;
+    const current = demoState.notifications[index];
+    if (current.status !== "processing" || current.processingAction !== input.action) return current;
+    const completed = completedDelivery(current, input).delivery;
+    demoState.notifications[index] = completed;
+    return completed;
+  }
+
+  try {
+    return await withOrganizationContext(sql, async (scopedSql) => {
+      const rows = await scopedSql`
+        select * from notification_deliveries
+        where organization_id = ${organizationId()} and id = ${input.id}
+        for update
+      `;
+      if (!rows[0]) return null;
+      const current = notificationFromRow(rows[0]);
+      if (current.status !== "processing" || current.processingAction !== input.action) return current;
+      const completed = completedDelivery(current, input);
+      const delivery = completed.delivery;
+      await scopedSql`
+        update notification_deliveries
+        set status = ${delivery.status},
+            primary_attempt_count = ${delivery.primaryAttemptCount},
+            fallback_attempt_count = ${delivery.fallbackAttemptCount},
+            processing_action = null,
+            next_attempt_at = ${delivery.nextAttemptAt},
+            claim_until = null,
+            last_attempt_at = ${delivery.lastAttemptAt},
+            delivered_at = ${delivery.deliveredAt},
+            fallback_delivered_at = ${delivery.fallbackDeliveredAt},
+            last_error_code = ${delivery.lastErrorCode},
+            updated_at = ${delivery.updatedAt}
+        where organization_id = ${organizationId()} and id = ${delivery.id}
+      `;
+      await insertNotificationEvent(scopedSql, delivery, {
+        eventType: completed.eventType,
+        action: input.action,
+        attemptNumber: completed.attemptNumber,
+        provider: completed.provider,
+        errorCode: delivery.lastErrorCode,
+        occurredAt: delivery.updatedAt
+      });
+      return delivery;
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function acknowledgeNotificationDelivery(id: string, acknowledgedBy: string) {
+  const now = new Date().toISOString();
+  const sql = getSql();
+  if (!sql) {
+    const delivery = demoState.notifications.find((item) => item.id === id);
+    if (!delivery) return { delivery: null, changed: false };
+    if (delivery.status === "acknowledged") return { delivery, changed: false };
+    delivery.status = "acknowledged";
+    delivery.acknowledgedAt = now;
+    delivery.acknowledgedBy = acknowledgedBy;
+    delivery.processingAction = null;
+    delivery.nextAttemptAt = null;
+    delivery.claimUntil = null;
+    delivery.updatedAt = now;
+    return { delivery: { ...delivery }, changed: true };
+  }
+
+  try {
+    return await withOrganizationContext(sql, async (scopedSql) => {
+      const rows = await scopedSql`
+        select * from notification_deliveries
+        where organization_id = ${organizationId()} and id = ${id}
+        for update
+      `;
+      if (!rows[0]) return { delivery: null, changed: false };
+      const current = notificationFromRow(rows[0]);
+      if (current.status === "acknowledged") return { delivery: current, changed: false };
+      const delivery: NotificationDelivery = {
+        ...current,
+        status: "acknowledged",
+        acknowledgedAt: now,
+        acknowledgedBy,
+        processingAction: null,
+        nextAttemptAt: null,
+        claimUntil: null,
+        updatedAt: now
+      };
+      await scopedSql`
+        update notification_deliveries
+        set status = 'acknowledged', acknowledged_at = ${now}, acknowledged_by = ${acknowledgedBy},
+            processing_action = null, next_attempt_at = null, claim_until = null, updated_at = ${now}
+        where organization_id = ${organizationId()} and id = ${id}
+      `;
+      await insertNotificationEvent(scopedSql, delivery, {
+        eventType: "acknowledged",
+        provider: "owner-portal",
+        occurredAt: now
+      });
+      return { delivery, changed: true };
+    });
+  } catch {
+    return { delivery: null, changed: false };
   }
 }
 
@@ -375,6 +783,8 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
       counts,
       recentQueue: demoState.queue.slice(0, 12),
       recentAudit: demoState.audit.slice(0, 12),
+      recentNotifications: demoState.notifications.slice(0, 12),
+      notificationSummary: notificationSummary(demoState.notifications),
       productionNotes: [
         "Demo memory is useful for local smoke tests only.",
         "Set DATABASE_URL and seed organizations/properties before handling real renter data.",
@@ -384,7 +794,7 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
   }
 
   try {
-    const [inquiries, support, approvals, agentMissions, agentRuns, notifications, listingDryRuns, audit] = await withOrganizationContext(
+    const [inquiries, support, approvals, agentMissions, agentRuns, notifications, recentNotifications, notificationStatusCounts, listingDryRuns, audit] = await withOrganizationContext(
       sql,
       async (scopedSql) => Promise.all([
         scopedSql`select count(*)::int as count from inquiries where organization_id = ${organizationId()}`,
@@ -392,12 +802,23 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
         scopedSql`select count(*)::int as count from approvals where organization_id = ${organizationId()}`,
         scopedSql`select count(*)::int as count from agent_missions where organization_id = ${organizationId()}`,
         scopedSql`select count(*)::int as count from agent_runs where organization_id = ${organizationId()}`,
-        scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'notification'`,
+        scopedSql`select count(*)::int as count from notification_deliveries where organization_id = ${organizationId()}`,
+        scopedSql`select * from notification_deliveries where organization_id = ${organizationId()} order by created_at desc limit 12`,
+        scopedSql`
+          select
+            count(*) filter (where status in ('queued', 'processing', 'failed', 'fallback-required', 'fallback-failed'))::int as queued,
+            count(*) filter (where urgency = 'urgent' and status <> 'acknowledged')::int as urgent_unacknowledged,
+            count(*) filter (where status in ('failed', 'fallback-required', 'fallback-failed'))::int as failures,
+            count(*) filter (where status = 'acknowledged')::int as acknowledged
+          from notification_deliveries
+          where organization_id = ${organizationId()}
+        `,
         scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'listing_dry_run'`,
         scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()}`
       ])
     );
 
+    const mappedNotifications = recentNotifications.map((row) => notificationFromRow(row));
     return {
       health,
       counts: {
@@ -412,6 +833,13 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
       },
       recentQueue: [],
       recentAudit: [],
+      recentNotifications: mappedNotifications,
+      notificationSummary: {
+        queued: notificationStatusCounts[0]?.queued ?? 0,
+        urgentUnacknowledged: notificationStatusCounts[0]?.urgent_unacknowledged ?? 0,
+        failures: notificationStatusCounts[0]?.failures ?? 0,
+        acknowledged: notificationStatusCounts[0]?.acknowledged ?? 0
+      },
       productionNotes: [
         "Postgres is configured. Verify auth, row-level security, backups, and retention before production.",
         "Runtime snapshot intentionally returns counts only from database mode.",
@@ -424,6 +852,8 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
       counts: { inquiry: 0, support: 0, approval: 0, "agent-mission": 0, "agent-run": 0, "listing-dry-run": 0, notification: 0, audit: 0 },
       recentQueue: [],
       recentAudit: [],
+      recentNotifications: [],
+      notificationSummary: { queued: 0, urgentUnacknowledged: 0, failures: 0, acknowledged: 0 },
       productionNotes: [
         "DATABASE_URL is present, but runtime snapshot queries failed.",
         "Apply db/schema.sql, seed organization/property records, and check database permissions."

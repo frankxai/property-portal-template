@@ -2,7 +2,7 @@ import type { AgentRole, ApprovalRisk, ListingChannel } from "@/lib/types";
 import { controlPlaneConfiguration } from "./mcp-configuration.ts";
 
 export type RuntimeMode = "demo" | "database-ready";
-export type RuntimeNotificationMode = "not-configured" | "email-target-only" | "webhook-ready";
+export type RuntimeNotificationMode = "not-configured" | "webhook-incomplete" | "webhook-ready" | "webhook-fallback-ready";
 export type RuntimeAdapterName = "demo-memory" | "postgres";
 
 export type RuntimeActorRole = "owner" | "operator" | "agent" | "renter" | "system";
@@ -34,6 +34,7 @@ export type RuntimeHealth = {
   capabilities: {
     database: boolean;
     ownerNotification: boolean;
+    notificationFallback: boolean;
     auth: boolean;
     mcpServer: boolean;
     agentRuntime: boolean;
@@ -88,8 +89,15 @@ export type ListingDryRunPayload = {
   channel: ListingChannel;
 };
 
-const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL", "OWNER_NOTIFICATION_EMAIL"];
+const requiredRuntimeEnv = ["DATABASE_URL", "APP_BASE_URL"];
 const requiredProductionEnv = ["OWNER_PORTAL_SECRET", "OWNER_PORTAL_PASSCODE_HASH"];
+const requiredNotificationEnv = [
+  "OWNER_NOTIFICATION_WEBHOOK_URL",
+  "OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET",
+  "OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL",
+  "OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET",
+  "OWNER_NOTIFICATION_WORKER_TOKEN"
+];
 const optionalRuntimeEnv = [
   "AUTH_PROVIDER",
   "OWNER_ADMIN_EMAIL",
@@ -99,7 +107,12 @@ const optionalRuntimeEnv = [
   "MCP_SERVER_ACCESS_TOKEN",
   "MCP_SERVER_ORIGIN",
   "MCP_REQUEST_TIMEOUT_MS",
-  "OWNER_NOTIFICATION_WEBHOOK_URL"
+  "OWNER_NOTIFICATION_MAX_ATTEMPTS",
+  "OWNER_NOTIFICATION_RETRY_BASE_MS",
+  "OWNER_NOTIFICATION_ACK_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_CLAIM_LEASE_MS",
+  "OWNER_NOTIFICATION_REQUEST_TIMEOUT_MS",
+  "OWNER_NOTIFICATION_BATCH_SIZE"
 ];
 
 export const blockedV1Actions = [
@@ -131,15 +144,31 @@ export function runtimeHealth(): RuntimeHealth {
     ...(mcpUrl && !mcpToken ? ["MCP_SERVER_ACCESS_TOKEN"] : []),
     ...(mcpToken && !mcpUrl ? ["MCP_SERVER_URL"] : [])
   ];
+  const webhookConfigured = Boolean(process.env.OWNER_NOTIFICATION_WEBHOOK_URL);
+  const webhookSigned = Boolean(process.env.OWNER_NOTIFICATION_WEBHOOK_SIGNING_SECRET);
+  const workerConfigured = Boolean(process.env.OWNER_NOTIFICATION_WORKER_TOKEN);
+  const fallbackConfigured = Boolean(process.env.OWNER_NOTIFICATION_FALLBACK_WEBHOOK_URL);
+  const fallbackSigned = Boolean(process.env.OWNER_NOTIFICATION_FALLBACK_SIGNING_SECRET);
   const missingEnv = [...new Set([
-    ...[...requiredRuntimeEnv, ...requiredProductionEnv].filter((name) => !process.env[name]),
+    ...[...requiredRuntimeEnv, ...requiredProductionEnv, ...requiredNotificationEnv].filter((name) => !process.env[name]),
     ...conditionalMcpEnv
   ])];
-  const notificationMode: RuntimeNotificationMode = process.env.OWNER_NOTIFICATION_WEBHOOK_URL
-    ? "webhook-ready"
-    : process.env.OWNER_NOTIFICATION_EMAIL
-      ? "email-target-only"
-      : "not-configured";
+  const primaryNotificationReady = webhookConfigured && webhookSigned && workerConfigured;
+  const fallbackNotificationReady = fallbackConfigured && fallbackSigned;
+  const notificationPartiallyConfigured = [
+    webhookConfigured,
+    webhookSigned,
+    workerConfigured,
+    fallbackConfigured,
+    fallbackSigned
+  ].some(Boolean);
+  const notificationMode: RuntimeNotificationMode = primaryNotificationReady && fallbackNotificationReady
+    ? "webhook-fallback-ready"
+    : primaryNotificationReady
+      ? "webhook-ready"
+      : notificationPartiallyConfigured
+        ? "webhook-incomplete"
+        : "not-configured";
 
   return {
     mode: missingEnv.includes("DATABASE_URL") ? "demo" : "database-ready",
@@ -147,12 +176,13 @@ export function runtimeHealth(): RuntimeHealth {
     adapter: missingEnv.includes("DATABASE_URL") ? "demo-memory" : "postgres",
     notificationMode,
     mcpMode: mcp.configured ? "connected" : mcp.partial ? "partial" : "disabled",
-    requiredEnv: [...requiredRuntimeEnv, ...requiredProductionEnv],
+    requiredEnv: [...requiredRuntimeEnv, ...requiredProductionEnv, ...requiredNotificationEnv],
     optionalEnv: optionalRuntimeEnv,
     missingEnv,
     capabilities: {
       database: Boolean(process.env.DATABASE_URL),
-      ownerNotification: notificationMode !== "not-configured",
+      ownerNotification: primaryNotificationReady,
+      notificationFallback: primaryNotificationReady && fallbackNotificationReady,
       auth: Boolean(process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH),
       mcpServer: mcp.configured,
       agentRuntime: mcp.configured

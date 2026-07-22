@@ -21,6 +21,8 @@
     "mcp:smoke": "node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
     "smoke": "node scripts/e2e-smoke.mjs",
     "auth:smoke": "node scripts/auth-boundary-smoke.mjs",
+    "notification:smoke": "node scripts/notification-lifecycle-smoke.mjs",
+    "notification:visual": "node scripts/notification-visual-qa.mjs",
     "auth:hash": "node scripts/generate-owner-passcode-hash.mjs",
     "install:proof": "node scripts/install-proof-packet.mjs",
     "db:rls:smoke": "node scripts/postgres-rls-smoke.mjs",

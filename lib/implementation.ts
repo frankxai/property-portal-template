@@ -62,7 +62,7 @@ export const implementationLayers: ImplementationLayer[] = [
     status: runtimeHealth().capabilities.ownerNotification ? "configure" : "planned",
     ownerValue: "Urgent issues and approval requests reach the owner without exposing sensitive details in public tools.",
     implementerAction: "Wire OWNER_NOTIFICATION_WEBHOOK_URL to email, WhatsApp, n8n, Make, or a Railway worker after storage exists.",
-    evidence: ["OWNER_NOTIFICATION_EMAIL", "OWNER_NOTIFICATION_WEBHOOK_URL", "support classification", "approval records"],
+    evidence: ["signed primary webhook", "signed fallback webhook", "scoped worker token", "support classification", "acknowledgement receipts"],
     productionGate: "Notification templates are reviewed for privacy and do not include access secrets or private renter records."
   },
   {

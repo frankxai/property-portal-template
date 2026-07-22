@@ -114,10 +114,10 @@ export function createInstallProofPacket() {
       title: "Owner notification and escalation route",
       status: hasNotifications ? "manual" : "configure",
       ownerOutcome: "Urgent support and approval-required work reaches the owner without exposing secrets or private renter records.",
-      implementerAction: "Configure owner email or webhook, decide email/WhatsApp/n8n/Make/Railway worker path, and review notification templates.",
-      evidence: ["OWNER_NOTIFICATION_EMAIL", "OWNER_NOTIFICATION_WEBHOOK_URL", "lib/owner-notifications.ts", "support classification"],
-      commands: ["npm run smoke"],
-      gate: "Owner receives urgent and approval notices with sanitized summaries, no access secrets, and a clear escalation owner."
+      implementerAction: "Apply the notification migration, configure signed primary and fallback webhooks plus the scoped worker, run lifecycle smoke, and capture a deployed owner acknowledgement.",
+      evidence: ["db/002-notification-lifecycle.sql", "docs/notification-lifecycle.md", "/admin/notifications", "notification event ledger"],
+      commands: ["npm run notification:smoke", "npm run db:rls:smoke"],
+      gate: "Urgent delivery, bounded retry, acknowledgement timeout, fallback, and owner acknowledgement each leave sanitized tenant-scoped receipts."
     },
     {
       id: "release-and-business-handoff",
@@ -171,6 +171,18 @@ export function createInstallProofPacket() {
     {
       command: "npm run visual:qa",
       purpose: "Capture exact desktop/mobile evidence and reject horizontal overflow or clipped control text.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run notification:smoke",
+      purpose: "Prove signed outbox delivery, retry, urgent fallback, idempotent acknowledgement, and zero downstream actions.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run notification:visual",
+      purpose: "Capture exact desktop/mobile notification operations evidence and reject clipped lifecycle state or navigation.",
       requiredBefore: "owner-preview",
       requiresLiveSecret: false
     },
@@ -232,6 +244,7 @@ export function createInstallProofPacket() {
       secretHandling: "The proof packet reports environment key names and configured booleans only; it does not print secret values.",
       dataBoundary: "Approved property facts live in GitHub content; renter submissions and approvals belong in protected runtime storage.",
       databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
+      notificationBoundary: "The outbox stores sanitized summaries and hashes only; signed delivery and acknowledgement never send renter replies or dispatch work.",
       automationBoundary: "Agents draft and summarize only; consequential renter, listing, pricing, legal, access, repair, and payment actions require owner approval."
     }
   };
