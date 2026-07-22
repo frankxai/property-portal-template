@@ -21,7 +21,6 @@ const optionalEnv = [
   "MCP_SERVER_ACCESS_TOKEN",
   "MCP_SERVER_ORIGIN",
   "MCP_REQUEST_TIMEOUT_MS",
-  "AGENT_RUNTIME_URL",
   "OWNER_NOTIFICATION_WEBHOOK_URL"
 ];
 
@@ -35,11 +34,15 @@ const requiredFiles = [
   "lib/agent-control-plane.ts",
   "lib/mcp-configuration.ts",
   "lib/mcp-control-plane.ts",
+  "lib/control-plane-route.ts",
   "lib/runtime-store.ts",
   "app/admin/setup/page.tsx",
   "app/admin/implementation/page.tsx",
   "app/admin/control-center/page.tsx",
   "app/api/agent-missions/route.ts",
+  "app/api/approved-evidence/route.ts",
+  "app/api/agent-drafts/route.ts",
+  "app/api/agent-run-reviews/route.ts",
   "app/api/install/proof-packet/route.ts",
   "db/schema.sql",
   "db/rls.sql",
@@ -88,8 +91,8 @@ const phases = [
   },
   {
     id: "agent-substrate",
-    status: process.env.MCP_SERVER_URL && process.env.MCP_SERVER_ACCESS_TOKEN && process.env.AGENT_RUNTIME_URL ? "manual" : "configure",
-    gate: "The authenticated portal-to-MCP contract passes without silent fallback; agents draft only and owner approval blocks consequential outputs."
+    status: process.env.MCP_SERVER_URL && process.env.MCP_SERVER_ACCESS_TOKEN ? "manual" : "configure",
+    gate: "Mission, approved evidence, structured draft, and owner review pass through authenticated MCP without silent fallback; external actions remain blocked."
   },
   {
     id: "release-and-business-handoff",
@@ -131,7 +134,7 @@ const packet = {
   publicSafety: {
     secretHandling: "This CLI reports environment key names and configured booleans only; it does not print secret values.",
     dataBoundary: "Approved facts live in GitHub content; private renter submissions belong in runtime storage.",
-    automationBoundary: "Agents draft and summarize only until owner approval is recorded."
+    automationBoundary: "Agents draft from server-approved evidence only. Owner review records an outcome but does not apply or send content."
   }
 };
 

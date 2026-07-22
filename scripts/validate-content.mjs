@@ -21,6 +21,10 @@ await readFile(path.join(process.cwd(), "lib", "owner-notifications.ts"), "utf8"
 await readFile(path.join(process.cwd(), "app", "admin", "sign-in", "page.tsx"), "utf8");
 const controlCenterSource = await readFile(path.join(process.cwd(), "app", "admin", "control-center", "page.tsx"), "utf8");
 const missionRouteSource = await readFile(path.join(process.cwd(), "app", "api", "agent-missions", "route.ts"), "utf8");
+const mcpClientSource = await readFile(path.join(process.cwd(), "lib", "mcp-control-plane.ts"), "utf8");
+const evidenceRouteSource = await readFile(path.join(process.cwd(), "app", "api", "approved-evidence", "route.ts"), "utf8");
+const draftRouteSource = await readFile(path.join(process.cwd(), "app", "api", "agent-drafts", "route.ts"), "utf8");
+const reviewRouteSource = await readFile(path.join(process.cwd(), "app", "api", "agent-run-reviews", "route.ts"), "utf8");
 await readFile(path.join(process.cwd(), "app", "api", "auth", "owner", "sign-in", "route.ts"), "utf8");
 await readFile(path.join(process.cwd(), "scripts", "generate-owner-passcode-hash.mjs"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "v0-implementation-brief.md"), "utf8");
@@ -153,6 +157,22 @@ const requiredMissionRouteSnippets = [
   "owner-mission-review"
 ];
 
+const requiredMcpClientSnippets = [
+  "record_approved_evidence",
+  "run_agent_draft",
+  "record_agent_run_review",
+  "evidenceSnapshot",
+  "contentApplied: z.literal(false)",
+  "AbortSignal.timeout"
+];
+
+const requiredGovernedRouteSnippets = [
+  "requireOwnerApiAccess",
+  "requireConfiguredControlPlane",
+  "controlPlaneFailure",
+  "mcp-control-plane"
+];
+
 const requiredRlsSnippets = [
   "property_os_current_organization_id",
   "enable row level security",
@@ -257,6 +277,24 @@ for (const snippet of requiredControlCenterSnippets) {
 for (const snippet of requiredMissionRouteSnippets) {
   if (!missionRouteSource.includes(snippet)) {
     throw new Error(`app/api/agent-missions/route.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredMcpClientSnippets) {
+  if (!mcpClientSource.includes(snippet)) {
+    throw new Error(`lib/mcp-control-plane.ts is missing ${snippet}`);
+  }
+}
+
+for (const [name, routeSource] of [
+  ["approved-evidence", evidenceRouteSource],
+  ["agent-drafts", draftRouteSource],
+  ["agent-run-reviews", reviewRouteSource]
+]) {
+  for (const snippet of requiredGovernedRouteSnippets) {
+    if (!routeSource.includes(snippet)) {
+      throw new Error(`app/api/${name}/route.ts is missing ${snippet}`);
+    }
   }
 }
 

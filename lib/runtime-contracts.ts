@@ -99,7 +99,6 @@ const optionalRuntimeEnv = [
   "MCP_SERVER_ACCESS_TOKEN",
   "MCP_SERVER_ORIGIN",
   "MCP_REQUEST_TIMEOUT_MS",
-  "AGENT_RUNTIME_URL",
   "OWNER_NOTIFICATION_WEBHOOK_URL"
 ];
 
@@ -156,7 +155,7 @@ export function runtimeHealth(): RuntimeHealth {
       ownerNotification: notificationMode !== "not-configured",
       auth: Boolean(process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH),
       mcpServer: mcp.configured,
-      agentRuntime: Boolean(process.env.AGENT_RUNTIME_URL)
+      agentRuntime: mcp.configured
     },
     blockedV1Actions,
     ownerApprovalRequiredFor

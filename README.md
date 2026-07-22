@@ -60,6 +60,9 @@ Runtime APIs:
 
 - `/api/runtime/health`: environment, adapter, notification, and capability posture
 - `/api/runtime/snapshot`: counts, recent demo queue items, audit posture, and production notes
+- `/api/approved-evidence`: owner-authenticated, versioned evidence registration through MCP
+- `/api/agent-drafts`: approved-evidence structured draft through MCP; no local fallback
+- `/api/agent-run-reviews`: owner accept, revise, or reject outcome through MCP; no content apply
 
 Production database order:
 
@@ -79,7 +82,7 @@ The API route `/api/implementation/readiness` exposes the same contract for auto
 
 The protected route `/admin/control-center` converts the agent team into an operational surface: ten narrow specialist mandates, six mission states, an explicit authority contract, runtime proof counts, and owner/renter/property/partner success targets. `/api/agent-missions` records a draft-only mission with one property scope, objective, success metric, owner action, persistence receipt, notification receipt, and audit event.
 
-The portal stores mission records in demo memory or Postgres. The paired `property-os-template` MCP server proves the proposal, owner decision, single-use receipt, exact internal apply, audit, and undo contract in memory. A production install must implement that receipt lifecycle transactionally against the Postgres transition tables before enabling any controlled state change. External publication, messaging, dispatch, applicant decisions, access disclosure, pricing, and availability remain blocked.
+When MCP is configured, the portal routes missions, approved evidence, structured drafts, and owner review outcomes through that single authenticated control plane. Governed draft routes never fall back to the portal database, and the legacy manual run ledger is disabled in connected or production mode. The paired `property-os-template` persists these records under forced RLS and implements proposal, owner decision, single-use receipt, exact internal apply, audit, and undo transactionally. External publication, messaging, dispatch, applicant decisions, access disclosure, pricing, and availability remain blocked.
 
 ## Self-Service Install Proof
 

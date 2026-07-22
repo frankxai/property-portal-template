@@ -8,7 +8,9 @@
 - Use `OWNER_PORTAL_API_TOKEN` only for trusted server-to-server automation and rotate it when an implementer leaves.
 - Store inquiries, support tickets, approvals, and agent runs in a tenant-scoped database.
 - Apply `db/rls.sql` after `db/schema.sql` so Postgres enforces tenant isolation through `property_os.organization_id`.
-- Route agent missions through the authenticated MCP service. Never fall back to local mission persistence after a configured MCP failure.
+- Route agent missions, approved evidence, structured drafts, and owner review outcomes through the authenticated MCP service. Never fall back to portal persistence after a configured MCP failure.
+- Keep model keys and model aliases in the Railway MCP service. The Vercel portal receives only MCP transport credentials.
+- Disable the manual demo agent-run ledger in production; model output must have a mission, frozen evidence hashes, policy result, and review state.
 - Use `/admin/runtime` to verify adapter, notification, capability, queue, and audit posture.
 - Keep `OWNER_NOTIFICATION_WEBHOOK_URL` payloads sanitized and route full private details only through runtime storage.
 - Keep access codes, private addresses, lease details, IDs, bank data, and payment records out of public content.
@@ -53,7 +55,7 @@ Before production:
 4. Seed `organizations` and `properties` for `PROPERTY_OS_ORG_ID`.
 5. Configure owner auth with `npm run auth:hash -- "private owner passcode"` or a reviewed identity provider.
 6. Run `npm run db:rls:smoke` against the target database.
-7. Configure `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN`, verify durable `/readyz`, and run `npm run mcp:smoke`.
+7. Configure `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN`, verify durable `/readyz`, and run `npm run mcp:smoke` across mission, evidence, draft, and review tools.
 8. Wire sanitized owner notification webhook or worker.
 9. Replace sample content and media.
 10. Run validation, privacy, typecheck, build, smoke, and visual QA.

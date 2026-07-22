@@ -62,7 +62,10 @@ Production requires more than a green build. The minimum gates are:
 - set `PROPERTY_OS_ORG_ID` for the target organization
 - run `npm run db:rls:smoke` against the live database
 - deploy the Property OS MCP service, set `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN`, and verify its durable `/readyz` state
-- run `npm run mcp:smoke`; a configured MCP failure must return `503` without local mission fallback
+- apply MCP migrations `001-control-plane.sql` and `002-governed-agent-runtime.sql` in order
+- configure the MCP service model alias and AI Gateway secret on Railway, never in Vercel portal variables
+- run `npm run mcp:smoke`; a configured MCP failure must return `503` without local mission, evidence, draft, or review fallback
+- register one approved evidence record, run one structured draft by reference, and record one owner review outcome
 - configure owner notification by email, webhook, or worker
 - document backups, retention, and deletion ownership
 - complete desktop and mobile preview QA
