@@ -30,6 +30,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/admin/listings`: listing draft studio
 - `/admin/integrations`: approved/manual/planned integration cockpit
 - `/admin/control-center`: specialist missions, authority boundary, runtime posture, lifecycle, and outcome scorecard
+- `/admin/agent-workbench`: approved-evidence, structured-draft, immutable-proof, and owner-review workflow
 - `/admin/agent-runs`: owner-reviewed agent run ledger
 - `/admin/ops`: operating cadence, success criteria, and release gates
 
@@ -84,6 +85,8 @@ The protected route `/admin/control-center` converts the agent team into an oper
 
 When MCP is configured, the portal routes missions, approved evidence, structured drafts, and owner review outcomes through that single authenticated control plane. Governed draft routes never fall back to the portal database, and the legacy manual run ledger is disabled in connected or production mode. The paired `property-os-template` persists these records under forced RLS and implements proposal, owner decision, single-use receipt, exact internal apply, audit, and undo transactionally. External publication, messaging, dispatch, applicant decisions, access disclosure, pricing, and availability remain blocked.
 
+The protected `/admin/agent-workbench` is the owner-facing four-stage loop: record a bounded mission, register exact approved evidence, generate a schema-checked draft, and record accept/revise/reject. The page exposes model, prompt, evidence, output hash, risk, latency, token, and no-action receipts. A review never applies or sends the draft.
+
 ## Self-Service Install Proof
 
 The route `/admin/setup` includes the install proof cockpit: proof score, runtime posture, required commands, phase gates, missing production env names, owner approval boundaries, and blocked v1 actions.
@@ -115,6 +118,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 - `docs/runtime-adapter.md`
 - `docs/portal-scene-brief.md`
 - `docs/agent-control-center-spec.md`
+- `docs/agent-workbench-spec.md`
 - `docs/product-roadmap.md`
 - `docs/production-hardening.md`
 - `docs/v0-implementation-brief.md`

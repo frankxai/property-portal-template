@@ -20,6 +20,8 @@ const selfServiceInstallDocs = await readFile(path.join(process.cwd(), "docs", "
 await readFile(path.join(process.cwd(), "lib", "owner-notifications.ts"), "utf8");
 await readFile(path.join(process.cwd(), "app", "admin", "sign-in", "page.tsx"), "utf8");
 const controlCenterSource = await readFile(path.join(process.cwd(), "app", "admin", "control-center", "page.tsx"), "utf8");
+const workbenchPageSource = await readFile(path.join(process.cwd(), "app", "admin", "agent-workbench", "page.tsx"), "utf8");
+const workbenchComponentSource = await readFile(path.join(process.cwd(), "components", "AgentWorkbench.tsx"), "utf8");
 const missionRouteSource = await readFile(path.join(process.cwd(), "app", "api", "agent-missions", "route.ts"), "utf8");
 const mcpClientSource = await readFile(path.join(process.cwd(), "lib", "mcp-control-plane.ts"), "utf8");
 const evidenceRouteSource = await readFile(path.join(process.cwd(), "app", "api", "approved-evidence", "route.ts"), "utf8");
@@ -30,6 +32,7 @@ await readFile(path.join(process.cwd(), "scripts", "generate-owner-passcode-hash
 await readFile(path.join(process.cwd(), "docs", "v0-implementation-brief.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "implementation-cockpit.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "agent-control-center-spec.md"), "utf8");
+await readFile(path.join(process.cwd(), "docs", "agent-workbench-spec.md"), "utf8");
 await readFile(path.join(process.cwd(), "design-loop-evidence.json"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "runtime-adapter.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "owner-auth.md"), "utf8");
@@ -147,6 +150,24 @@ const requiredControlCenterSnippets = [
   "AgentMissionForm",
   "authorityContract",
   "successScorecard"
+];
+
+const requiredWorkbenchPageSnippets = [
+  "requireOwnerAccess",
+  "runtimeHealth",
+  "AgentWorkbench",
+  "From approved fact to reviewable work.",
+  "External actions"
+];
+
+const requiredWorkbenchComponentSnippets = [
+  "/api/agent-missions",
+  "/api/approved-evidence",
+  "/api/agent-drafts",
+  "/api/agent-run-reviews",
+  "contentApplied",
+  "externalActionsPerformed",
+  "Nothing was applied or sent."
 ];
 
 const requiredMissionRouteSnippets = [
@@ -271,6 +292,18 @@ for (const snippet of requiredSchemaSnippets) {
 for (const snippet of requiredControlCenterSnippets) {
   if (!controlCenterSource.includes(snippet)) {
     throw new Error(`app/admin/control-center/page.tsx is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWorkbenchPageSnippets) {
+  if (!workbenchPageSource.includes(snippet)) {
+    throw new Error(`app/admin/agent-workbench/page.tsx is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredWorkbenchComponentSnippets) {
+  if (!workbenchComponentSource.includes(snippet)) {
+    throw new Error(`components/AgentWorkbench.tsx is missing ${snippet}`);
   }
 }
 

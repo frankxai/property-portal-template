@@ -7,7 +7,7 @@ import { chromium } from "playwright-core";
 
 const port = Number(process.env.VISUAL_QA_PORT ?? 3214);
 const baseUrl = `http://127.0.0.1:${port}`;
-const route = "/admin/control-center";
+const route = "/admin/agent-workbench";
 const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
 const artifactDir = path.join(process.cwd(), "artifacts", "visual-qa");
 const isWindows = process.platform === "win32";
@@ -69,12 +69,20 @@ async function inspect(page, name, viewport) {
   await page.setViewportSize(viewport);
   await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
   await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "One accountable team. Every action leaves proof." }).waitFor();
-  await page.getByRole("button", { name: "Queue mission" }).waitFor();
+  await page.getByRole("heading", { name: "From approved fact to reviewable work." }).waitFor();
+  await page.getByRole("button", { name: "Record mission" }).waitFor();
+
+  const operationsMenu = page.locator(".nav-menu summary");
+  await operationsMenu.click();
+  const menuBox = await page.locator(".nav-menu-panel").boundingBox();
+  if (!menuBox || menuBox.x < 0 || menuBox.y < 0 || menuBox.x + menuBox.width > viewport.width + 1 || menuBox.y + menuBox.height > viewport.height + 1) {
+    throw new Error(`${name} operations menu escaped the viewport: ${JSON.stringify(menuBox)}`);
+  }
+  await operationsMenu.click();
 
   const layout = await page.evaluate(() => {
     const root = document.documentElement;
-    const required = [".control-header", ".metric-strip", ".control-grid", ".lifecycle", ".table-list", ".score-list"];
+    const required = [".control-header", ".metric-strip", ".workbench-stage-rail", ".workbench-grid", ".workbench-input-lane", ".workbench-output"];
     const missing = required.filter((selector) => !document.querySelector(selector));
     const clippedText = [...document.querySelectorAll("h1, h2, h3, p, strong, button, label, .status")]
       .filter((element) => {
@@ -89,7 +97,8 @@ async function inspect(page, name, viewport) {
       scrollWidth: root.scrollWidth,
       overflowPixels: Math.max(0, root.scrollWidth - root.clientWidth),
       missing,
-      clippedText
+      clippedText,
+      operationsMenuInViewport: true
     };
   });
 
@@ -97,7 +106,7 @@ async function inspect(page, name, viewport) {
     throw new Error(`${name} layout failed: ${JSON.stringify(layout)}`);
   }
 
-  const screenshot = path.join(artifactDir, `control-center-${name}.png`);
+  const screenshot = path.join(artifactDir, `agent-workbench-${name}.png`);
   await page.screenshot({ path: screenshot, fullPage: true });
   return { name, screenshot, ...layout };
 }

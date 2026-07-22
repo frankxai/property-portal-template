@@ -7,6 +7,10 @@ The public renter experience stays open. Owner and admin workflows are protected
 - `/api/runtime/*`
 - `/api/implementation/readiness`
 - `/api/agent-runs`
+- `/api/agent-missions`
+- `/api/approved-evidence`
+- `/api/agent-drafts`
+- `/api/agent-run-reviews`
 - `/api/approvals`
 - `/api/listing-dry-run`
 

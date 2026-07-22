@@ -1,9 +1,9 @@
 {
   "version": "2026-07-22",
-  "task": "Add a premium owner agent control center to the Property Portal template.",
-  "surface": "Protected operational dashboard at /admin/control-center",
+  "task": "Add a premium governed agent workbench to the Property Portal template.",
+  "surface": "Protected operational workflow at /admin/agent-workbench",
   "audience": "Independent property owners, boutique agencies, and implementation partners",
-  "first_read": "One accountable specialist team, visible authority, measurable outcomes, and zero unsafe actions enabled.",
+  "first_read": "One bounded mission moving through approved evidence, structured draft, immutable proof, and owner review with zero external action.",
   "standards": [
     "design-agent-standards/OUTCOMES.md",
     "design-agent-standards/AGENTIC_DESIGN_LOOP.md",
@@ -12,15 +12,15 @@
   ],
   "references": [
     {
-      "label": "Existing Property Portal operating surfaces",
-      "source": "app/admin",
-      "reason": "Preserve the established operational density, navigation, status, and form language."
+      "label": "Existing Property Portal control center",
+      "source": "app/admin/control-center",
+      "reason": "Preserve the established operational density, authority language, status hierarchy, and responsive behavior."
     }
   ],
   "direction": {
     "keep": ["dense calm hierarchy", "restrained status color", "visible owner approval", "stable responsive controls"],
     "avoid": ["generic SaaS cards", "decorative gradients", "agent theater", "oversized dashboard typography"],
-    "signature": "Every mission is paired with its authority and proof rather than presented as autonomous magic.",
+    "signature": "Every workflow stage earns the next stage through a durable server receipt, ending in a decision that still performs no external action.",
     "system": ["existing portal typography", "6px and 8px radii", "teal for controlled state", "amber for owner review", "full-width operational bands"]
   },
   "asset_quality": {
@@ -33,24 +33,24 @@
   },
   "artifacts": [
     {
-      "path_or_url": "artifacts/visual-qa/control-center-desktop.png",
+      "path_or_url": "artifacts/visual-qa/agent-workbench-desktop.png",
       "kind": "ui",
       "inspected": true,
-      "notes": "Playwright-core full-page capture at 1440x1200; hierarchy, authority panel, mission form, lifecycle, team table, and scorecard inspected."
+      "notes": "Playwright-core full-page capture at 1440x1200; compact navigation, runtime posture, stage rail, two-lane workflow, disabled state, and multiline controls inspected."
     },
     {
-      "path_or_url": "artifacts/visual-qa/control-center-mobile.png",
+      "path_or_url": "artifacts/visual-qa/agent-workbench-mobile.png",
       "kind": "ui",
       "inspected": true,
-      "notes": "Playwright-core full-page capture at 390x844; navigation scroll, text wrapping, control sizing, stack order, and page width inspected."
+      "notes": "Playwright-core full-page capture at 390x844; intentional stack, readable controls, multiline metric, tap targets, and page width inspected."
     }
   ],
   "checks": [
     { "name": "asset-tier", "status": "pass", "evidence": "Tier C product UI is the correct medium for an owner operations console." },
-    { "name": "export-inspection", "status": "pass", "evidence": "Owned full-page captures exist at artifacts/visual-qa for 1440px desktop and 390px mobile." },
-    { "name": "visual-qa", "status": "pass", "evidence": "Automated root overflow and clipped-control checks passed at both viewports; captures show no overlap and a coherent mobile stack." }
+    { "name": "export-inspection", "status": "pass", "evidence": "Owned full-page workbench captures were inspected at 1440px desktop and 390px mobile." },
+    { "name": "visual-qa", "status": "pass", "evidence": "Root overflow and clipped-control checks passed at both viewports; the Operations menu stays in viewport and the locked state remains coherent." }
   ],
-  "score": { "total": 27, "max": 30, "notes": "Strong hierarchy, operational clarity, responsiveness, and authority signaling. Final three points depend on production owner content, live runtime state, and repeated owner usability evidence." },
+  "score": { "total": 27, "max": 30, "notes": "Strong first read, operational hierarchy, evidence specificity, responsive composition, and explicit authority. Final points require connected-runtime and repeated owner usability evidence." },
   "decision": "ship",
-  "known_risks": ["Sample property media remains unsuitable for a real client launch.", "Production transition persistence is not enabled by the UI."]
+  "known_risks": ["Sample property media remains unsuitable for a real client launch.", "Live generation depends on a separately deployed MCP runtime, database, and model provider configuration."]
 }

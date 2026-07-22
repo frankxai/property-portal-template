@@ -21,6 +21,7 @@ const routes = [
   "/admin/listings",
   "/admin/integrations",
   "/admin/control-center",
+  "/admin/agent-workbench",
   "/admin/agent-runs",
   "/admin/ops"
 ];
@@ -186,6 +187,21 @@ async function expectRuntimeSnapshot() {
   }
 }
 
+async function expectGovernedWriteLocked(path, body) {
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body)
+  });
+  if (response.status !== 503) {
+    throw new Error(`${path} returned ${response.status}; expected fail-closed 503 without MCP configuration`);
+  }
+  const payload = await response.json();
+  if (!payload.error?.includes("not configured") || !payload.correlationId) {
+    throw new Error(`${path} did not return a safe fail-closed receipt`);
+  }
+}
+
 try {
   await waitForServer();
 
@@ -208,6 +224,21 @@ try {
     "Unsafe actions enabled",
     "Queue mission"
   ]);
+  await expectPageContains("/admin/agent-workbench", [
+    "From approved fact to reviewable work.",
+    "Control plane locked",
+    "Approved evidence",
+    "Generate governed draft",
+    "No draft generated"
+  ]);
+
+  await expectGovernedWriteLocked("/api/approved-evidence", {
+    ref: "property:urban-haven-sample:profile",
+    propertySlug: "urban-haven-sample",
+    excerpt: "Approved sample fact.",
+    sourceType: "property-profile",
+    sourceVersionHash: "sample-profile-v1"
+  });
 
   await postJson("/api/inquiries", {
     propertySlug: "urban-haven-sample",
@@ -224,12 +255,19 @@ try {
     message: "Sample support request for smoke testing."
   });
 
-  await postJson("/api/agent-runs", {
-    role: "listing-ops",
-    trigger: "Smoke test agent run",
-    output: "Drafted listing copy for owner review.",
-    approvalRisk: "owner-required"
+  const legacyRun = await fetch(`${baseUrl}/api/agent-runs`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      role: "listing-ops",
+      trigger: "Smoke test agent run",
+      output: "Drafted listing copy for owner review.",
+      approvalRisk: "owner-required"
+    })
   });
+  if (legacyRun.status !== 503) {
+    throw new Error(`/api/agent-runs returned ${legacyRun.status}; expected production fail-closed 503`);
+  }
 
   const mission = await postJson("/api/agent-missions", {
     role: "property-steward",

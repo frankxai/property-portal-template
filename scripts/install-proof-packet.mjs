@@ -39,6 +39,8 @@ const requiredFiles = [
   "app/admin/setup/page.tsx",
   "app/admin/implementation/page.tsx",
   "app/admin/control-center/page.tsx",
+  "app/admin/agent-workbench/page.tsx",
+  "components/AgentWorkbench.tsx",
   "app/api/agent-missions/route.ts",
   "app/api/approved-evidence/route.ts",
   "app/api/agent-drafts/route.ts",
@@ -53,6 +55,7 @@ const requiredFiles = [
   "docs/self-service-install.md",
   "docs/implementation-cockpit.md",
   "docs/agent-control-center-spec.md",
+  "docs/agent-workbench-spec.md",
   "design-loop-evidence.json",
   "docs/operator-runbook.md"
 ];

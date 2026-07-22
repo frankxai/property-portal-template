@@ -72,7 +72,23 @@ try {
 
   await expectStatus("/properties/urban-haven-sample", 200);
   await expectStatus("/owner", 307);
+  await expectStatus("/admin/agent-workbench", 307);
   await expectStatus("/api/runtime/snapshot", 401);
+  await expectStatus("/api/approved-evidence", 401, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
+  await expectStatus("/api/agent-drafts", 401, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
+  await expectStatus("/api/agent-run-reviews", 401, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({})
+  });
   await expectStatus("/api/runtime/snapshot", 200, {
     headers: { authorization: `Bearer ${automationBearer}` }
   });
@@ -92,6 +108,9 @@ try {
   }
 
   await expectStatus("/owner", 200, {
+    headers: { cookie }
+  });
+  await expectStatus("/admin/agent-workbench", 200, {
     headers: { cookie }
   });
 
