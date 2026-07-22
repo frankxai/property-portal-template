@@ -34,6 +34,7 @@ alter table support_tickets enable row level security;
 alter table approvals enable row level security;
 alter table agent_runs enable row level security;
 alter table agent_missions enable row level security;
+alter table resource_versions enable row level security;
 alter table transition_proposals enable row level security;
 alter table approval_receipts enable row level security;
 alter table controlled_transitions enable row level security;
@@ -50,6 +51,7 @@ alter table support_tickets force row level security;
 alter table approvals force row level security;
 alter table agent_runs force row level security;
 alter table agent_missions force row level security;
+alter table resource_versions force row level security;
 alter table transition_proposals force row level security;
 alter table approval_receipts force row level security;
 alter table controlled_transitions force row level security;
@@ -99,6 +101,12 @@ create policy agent_runs_tenant_isolation on agent_runs
 
 drop policy if exists agent_missions_tenant_isolation on agent_missions;
 create policy agent_missions_tenant_isolation on agent_missions
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists resource_versions_tenant_isolation on resource_versions;
+create policy resource_versions_tenant_isolation on resource_versions
   for all
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());

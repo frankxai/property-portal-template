@@ -18,6 +18,9 @@ const optionalEnv = [
   "OWNER_PORTAL_API_TOKEN",
   "PROPERTY_OS_DEMO_AUTH",
   "MCP_SERVER_URL",
+  "MCP_SERVER_ACCESS_TOKEN",
+  "MCP_SERVER_ORIGIN",
+  "MCP_REQUEST_TIMEOUT_MS",
   "AGENT_RUNTIME_URL",
   "OWNER_NOTIFICATION_WEBHOOK_URL"
 ];
@@ -30,6 +33,8 @@ const requiredFiles = [
   "lib/auth.ts",
   "lib/runtime-contracts.ts",
   "lib/agent-control-plane.ts",
+  "lib/mcp-configuration.ts",
+  "lib/mcp-control-plane.ts",
   "lib/runtime-store.ts",
   "app/admin/setup/page.tsx",
   "app/admin/implementation/page.tsx",
@@ -41,6 +46,7 @@ const requiredFiles = [
   "scripts/auth-boundary-smoke.mjs",
   "scripts/visual-qa.mjs",
   "scripts/postgres-rls-smoke.mjs",
+  "scripts/mcp-control-plane-smoke.mjs",
   "docs/self-service-install.md",
   "docs/implementation-cockpit.md",
   "docs/agent-control-center-spec.md",
@@ -82,8 +88,8 @@ const phases = [
   },
   {
     id: "agent-substrate",
-    status: process.env.MCP_SERVER_URL && process.env.AGENT_RUNTIME_URL ? "manual" : "configure",
-    gate: "Agents draft only and owner approval blocks consequential outputs."
+    status: process.env.MCP_SERVER_URL && process.env.MCP_SERVER_ACCESS_TOKEN && process.env.AGENT_RUNTIME_URL ? "manual" : "configure",
+    gate: "The authenticated portal-to-MCP contract passes without silent fallback; agents draft only and owner approval blocks consequential outputs."
   },
   {
     id: "release-and-business-handoff",
@@ -116,6 +122,7 @@ const packet = {
     "npm run build",
     "npm run smoke",
     "npm run auth:smoke",
+    "npm run mcp:smoke",
     "npm run visual:qa",
     "npm run audit",
     "npm run install:proof",

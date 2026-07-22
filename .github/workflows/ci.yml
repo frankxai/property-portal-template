@@ -25,6 +25,8 @@ jobs:
         run: npm run validate
       - name: Type check
         run: npm run typecheck
+      - name: Audit dependencies
+        run: npm run audit
       - name: Build
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         run: npm run build

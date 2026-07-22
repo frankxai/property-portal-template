@@ -15,9 +15,10 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs",
+    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs && node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
     "privacy": "node scripts/privacy-scan.mjs",
     "agent:dry-run": "node --experimental-strip-types scripts/agent-dry-run.mjs",
+    "mcp:smoke": "node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
     "smoke": "node scripts/e2e-smoke.mjs",
     "auth:smoke": "node scripts/auth-boundary-smoke.mjs",
     "auth:hash": "node scripts/generate-owner-passcode-hash.mjs",
@@ -27,10 +28,12 @@
     "audit": "npm audit --audit-level=moderate"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
     "next": "^16.2.11",
     "postgres": "^3.4.7",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8"
+    "react-dom": "^19.2.8",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "22.13.10",
@@ -40,6 +43,7 @@
     "typescript": "5.8.2"
   },
   "overrides": {
+    "@hono/node-server": "2.0.11",
     "postcss": "8.5.10",
     "sharp": "0.35.3"
   }

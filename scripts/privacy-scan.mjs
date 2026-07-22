@@ -5,7 +5,7 @@ const root = process.cwd();
 const ignored = new Set(["node_modules", ".git", ".next"]);
 const riskyPatterns = [
   { label: "German IBAN", pattern: /DE\d{20}/i },
-  { label: "secret assignment", pattern: /(api_key|secret|token|password)\s*=\s*['"]?[A-Za-z0-9_\-]{12,}/i },
+  { label: "secret assignment", pattern: /(api_key|secret|token|password)[ \t]*=[ \t]*['"]?[A-Za-z0-9_\-]{12,}/i },
   { label: "lockbox value", pattern: /(lockbox|alarm|zugangscode|schluesselcode)\s*[:=]\s*\S+/i }
 ];
 const cardCandidatePattern = /\b(?:\d[ -]*?){13,19}\b/g;

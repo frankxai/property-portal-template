@@ -4,7 +4,7 @@ import { runtimeHealth } from "@/lib/runtime-contracts";
 import type { InquiryPayload, SupportPayload } from "@/lib/types";
 
 export type RuntimePersistenceReceipt = {
-  adapter: "demo-memory" | "postgres";
+  adapter: "demo-memory" | "postgres" | "mcp-control-plane";
   status: "recorded" | "failed";
   target: string;
   detail: string;

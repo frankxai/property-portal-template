@@ -34,6 +34,7 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run mcp:smoke
 npm run install:proof
 ```
 
@@ -60,6 +61,8 @@ Production requires more than a green build. The minimum gates are:
 - apply `db/schema.sql`, then `db/rls.sql`, then a private seed
 - set `PROPERTY_OS_ORG_ID` for the target organization
 - run `npm run db:rls:smoke` against the live database
+- deploy the Property OS MCP service, set `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN`, and verify its durable `/readyz` state
+- run `npm run mcp:smoke`; a configured MCP failure must return `503` without local mission fallback
 - configure owner notification by email, webhook, or worker
 - document backups, retention, and deletion ownership
 - complete desktop and mobile preview QA

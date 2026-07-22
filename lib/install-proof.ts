@@ -96,8 +96,8 @@ export function createInstallProofPacket() {
       ownerOutcome: "Specialist agents can draft listing copy, replies, support summaries, and weekly reviews inside approved-facts boundaries.",
       implementerAction: "Pair with property-os-template, configure MCP and agent runtime endpoints, and dry-run every agent role before owner handoff.",
       evidence: ["property-os-template", "/admin/control-center", "/api/agent-missions", "agent mission and run ledgers", "MCP authority contract"],
-      commands: ["npm run agent:dry-run", "npm run install:proof"],
-      gate: "Agents draft only; pricing, availability, lease, legal, payment, repair, access, and publication outputs require owner approval."
+      commands: ["npm run agent:dry-run", "npm run mcp:smoke", "npm run install:proof"],
+      gate: "The portal records missions through authenticated MCP without a silent local fallback; agents still draft only and consequential outputs require owner approval."
     },
     {
       id: "listing-operations",
@@ -153,6 +153,12 @@ export function createInstallProofPacket() {
     {
       command: "npm run smoke",
       purpose: "Route, inquiry, support, listing, runtime, and owner surface smoke test.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run mcp:smoke",
+      purpose: "Verify the authenticated portal-to-MCP mission contract and partial-configuration denial.",
       requiredBefore: "owner-preview",
       requiresLiveSecret: false
     },

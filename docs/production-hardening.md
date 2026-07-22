@@ -8,6 +8,7 @@
 - Use `OWNER_PORTAL_API_TOKEN` only for trusted server-to-server automation and rotate it when an implementer leaves.
 - Store inquiries, support tickets, approvals, and agent runs in a tenant-scoped database.
 - Apply `db/rls.sql` after `db/schema.sql` so Postgres enforces tenant isolation through `property_os.organization_id`.
+- Route agent missions through the authenticated MCP service. Never fall back to local mission persistence after a configured MCP failure.
 - Use `/admin/runtime` to verify adapter, notification, capability, queue, and audit posture.
 - Keep `OWNER_NOTIFICATION_WEBHOOK_URL` payloads sanitized and route full private details only through runtime storage.
 - Keep access codes, private addresses, lease details, IDs, bank data, and payment records out of public content.
@@ -52,9 +53,10 @@ Before production:
 4. Seed `organizations` and `properties` for `PROPERTY_OS_ORG_ID`.
 5. Configure owner auth with `npm run auth:hash -- "private owner passcode"` or a reviewed identity provider.
 6. Run `npm run db:rls:smoke` against the target database.
-7. Wire sanitized owner notification webhook or worker.
-8. Replace sample content and media.
-9. Run validation, privacy, typecheck, build, smoke, and visual QA.
-10. Verify Vercel preview.
-11. Review owner approval routes.
-12. Record residual risks.
+7. Configure `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN`, verify durable `/readyz`, and run `npm run mcp:smoke`.
+8. Wire sanitized owner notification webhook or worker.
+9. Replace sample content and media.
+10. Run validation, privacy, typecheck, build, smoke, and visual QA.
+11. Verify Vercel preview.
+12. Review owner approval routes.
+13. Record residual risks.

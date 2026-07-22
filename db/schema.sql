@@ -149,6 +149,14 @@ create table if not exists agent_missions (
   updated_at timestamptz not null default now()
 );
 
+create table if not exists resource_versions (
+  organization_id text not null references organizations(id) on delete cascade,
+  resource_id text not null,
+  version_hash text not null,
+  updated_at timestamptz not null default now(),
+  primary key (organization_id, resource_id)
+);
+
 create table if not exists transition_proposals (
   id text primary key,
   organization_id text not null references organizations(id) on delete cascade,

@@ -7,6 +7,8 @@ The portal ships with two runtime modes:
 
 The switch is automatic and visible through `/api/runtime/health`, `/api/runtime/snapshot`, and `/admin/runtime`.
 
+Agent missions have an additional authoritative path. When both `MCP_SERVER_URL` and `MCP_SERVER_ACCESS_TOKEN` are configured, `/api/agent-missions` writes through the authenticated MCP control plane. The portal does not duplicate that write in its local adapter. A partial configuration or failed MCP request returns `503` before notification or downstream work; there is no silent production fallback.
+
 ## Demo Memory
 
 Demo memory stores sanitized runtime summaries only inside the current Node process. It is useful for:
@@ -30,7 +32,8 @@ Production installs should:
 6. set `DATABASE_URL`
 7. configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
 8. run `npm run db:rls:smoke`
-9. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
+9. configure the MCP endpoint and access token, then run `npm run mcp:smoke`
+10. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
 
 The adapter writes:
 
@@ -38,6 +41,7 @@ The adapter writes:
 - support items to `support_tickets`
 - approvals to `approvals`
 - agent runs to `agent_runs`
+- agent missions, resource versions, approval receipts, and controlled transitions through the MCP service
 - listing dry-runs and write traces to `audit_events`
 
 Private renter messages, emails, and support details belong only in runtime storage. Public repos and GitHub issues receive sanitized summaries.
@@ -92,6 +96,7 @@ Do not put real renter data through the portal until:
 - Postgres writes are verified
 - auth and owner/admin role checks exist
 - `npm run db:rls:smoke` passes against the target database
+- the deployed MCP `/readyz` reports durable Postgres state and the portal-to-MCP mission flow passes
 - row-level security policies are applied
 - retention and deletion policy is defined
 - backups are enabled

@@ -19,6 +19,11 @@ const requiredTables = [
   "support_tickets",
   "approvals",
   "agent_runs",
+  "agent_missions",
+  "resource_versions",
+  "transition_proposals",
+  "approval_receipts",
+  "controlled_transitions",
   "audit_events"
 ];
 

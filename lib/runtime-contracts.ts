@@ -1,4 +1,5 @@
 import type { AgentRole, ApprovalRisk, ListingChannel } from "@/lib/types";
+import { controlPlaneConfiguration } from "./mcp-configuration.ts";
 
 export type RuntimeMode = "demo" | "database-ready";
 export type RuntimeNotificationMode = "not-configured" | "email-target-only" | "webhook-ready";
@@ -26,6 +27,7 @@ export type RuntimeHealth = {
   tenantModel: "single-demo" | "multi-tenant-ready";
   adapter: RuntimeAdapterName;
   notificationMode: RuntimeNotificationMode;
+  mcpMode: "disabled" | "partial" | "connected";
   requiredEnv: string[];
   optionalEnv: string[];
   missingEnv: string[];
@@ -94,6 +96,9 @@ const optionalRuntimeEnv = [
   "OWNER_PORTAL_API_TOKEN",
   "PROPERTY_OS_DEMO_AUTH",
   "MCP_SERVER_URL",
+  "MCP_SERVER_ACCESS_TOKEN",
+  "MCP_SERVER_ORIGIN",
+  "MCP_REQUEST_TIMEOUT_MS",
   "AGENT_RUNTIME_URL",
   "OWNER_NOTIFICATION_WEBHOOK_URL"
 ];
@@ -120,7 +125,17 @@ export const ownerApprovalRequiredFor = [
 ];
 
 export function runtimeHealth(): RuntimeHealth {
-  const missingEnv = [...requiredRuntimeEnv, ...requiredProductionEnv].filter((name) => !process.env[name]);
+  const mcp = controlPlaneConfiguration();
+  const mcpUrl = Boolean(mcp.url);
+  const mcpToken = Boolean(mcp.accessToken);
+  const conditionalMcpEnv = [
+    ...(mcpUrl && !mcpToken ? ["MCP_SERVER_ACCESS_TOKEN"] : []),
+    ...(mcpToken && !mcpUrl ? ["MCP_SERVER_URL"] : [])
+  ];
+  const missingEnv = [...new Set([
+    ...[...requiredRuntimeEnv, ...requiredProductionEnv].filter((name) => !process.env[name]),
+    ...conditionalMcpEnv
+  ])];
   const notificationMode: RuntimeNotificationMode = process.env.OWNER_NOTIFICATION_WEBHOOK_URL
     ? "webhook-ready"
     : process.env.OWNER_NOTIFICATION_EMAIL
@@ -132,6 +147,7 @@ export function runtimeHealth(): RuntimeHealth {
     tenantModel: missingEnv.includes("DATABASE_URL") ? "single-demo" : "multi-tenant-ready",
     adapter: missingEnv.includes("DATABASE_URL") ? "demo-memory" : "postgres",
     notificationMode,
+    mcpMode: mcp.configured ? "connected" : mcp.partial ? "partial" : "disabled",
     requiredEnv: [...requiredRuntimeEnv, ...requiredProductionEnv],
     optionalEnv: optionalRuntimeEnv,
     missingEnv,
@@ -139,7 +155,7 @@ export function runtimeHealth(): RuntimeHealth {
       database: Boolean(process.env.DATABASE_URL),
       ownerNotification: notificationMode !== "not-configured",
       auth: Boolean(process.env.OWNER_PORTAL_SECRET && process.env.OWNER_PORTAL_PASSCODE_HASH),
-      mcpServer: Boolean(process.env.MCP_SERVER_URL),
+      mcpServer: mcp.configured,
       agentRuntime: Boolean(process.env.AGENT_RUNTIME_URL)
     },
     blockedV1Actions,
