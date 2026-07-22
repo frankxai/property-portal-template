@@ -231,6 +231,7 @@ export function createInstallProofPacket() {
     publicSafety: {
       secretHandling: "The proof packet reports environment key names and configured booleans only; it does not print secret values.",
       dataBoundary: "Approved property facts live in GitHub content; renter submissions and approvals belong in protected runtime storage.",
+      databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
       automationBoundary: "Agents draft and summarize only; consequential renter, listing, pricing, legal, access, repair, and payment actions require owner approval."
     }
   };

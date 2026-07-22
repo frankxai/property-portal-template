@@ -90,7 +90,7 @@ const phases = [
   {
     id: "runtime-database",
     status: process.env.DATABASE_URL ? "manual" : "configure",
-    gate: "Live RLS smoke passes against the production database."
+    gate: "Live RLS smoke passes against the dedicated portal database; Railway uses a separate control-plane database."
   },
   {
     id: "agent-substrate",
@@ -137,6 +137,7 @@ const packet = {
   publicSafety: {
     secretHandling: "This CLI reports environment key names and configured booleans only; it does not print secret values.",
     dataBoundary: "Approved facts live in GitHub content; private renter submissions belong in runtime storage.",
+    databaseBoundary: "Vercel portal and Railway MCP credentials target separate tenant-isolated logical databases and roles; data crosses only through authenticated MCP tools.",
     automationBoundary: "Agents draft from server-approved evidence only. Owner review records an outcome but does not apply or send content."
   }
 };

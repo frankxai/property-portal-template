@@ -101,7 +101,8 @@ const requiredInstallProofSnippets = [
   "npm run install:proof",
   "does not print secret values",
   "ownerApprovalRequiredFor",
-  "blockedV1Actions"
+  "blockedV1Actions",
+  "separate tenant-isolated logical databases"
 ];
 
 const requiredRuntimeStoreSnippets = [
@@ -236,7 +237,8 @@ const requiredInstallProofCliSnippets = [
   "OWNER_PORTAL_PASSCODE_HASH",
   "app/api/install/proof-packet/route.ts",
   "does not print secret values",
-  "npm run db:rls:smoke"
+  "npm run db:rls:smoke",
+  "separate tenant-isolated logical databases"
 ];
 
 const requiredInstallProofRouteSnippets = [
@@ -250,7 +252,10 @@ const requiredSelfServiceInstallSnippets = [
   "npm run install:proof",
   "npm run db:rls:smoke",
   "45-Minute Community Fork Path",
-  "does not print secret values"
+  "does not print secret values",
+  "npm run install:plan",
+  "same logical database",
+  "OIDC"
 ];
 
 for (const snippet of requiredRuntimeSnippets) {

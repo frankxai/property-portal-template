@@ -24,7 +24,7 @@ It is not durable and must not be used as production storage.
 
 Production installs should:
 
-1. create a managed Postgres database
+1. create a managed Postgres logical database and least-privilege runtime role dedicated to the portal
 2. apply `db/schema.sql`
 3. apply `db/rls.sql`
 4. seed `organizations` and approved `properties`
@@ -32,7 +32,7 @@ Production installs should:
 6. set `DATABASE_URL`
 7. configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
 8. run `npm run db:rls:smoke`
-9. configure the MCP endpoint and access token, then run `npm run mcp:smoke`
+9. configure the MCP endpoint, origin, and access token backed by a separate control-plane logical database, then run `npm run mcp:smoke`
 10. verify `/admin/runtime` and `/api/runtime/snapshot` from an owner session
 
 The adapter writes:
@@ -41,10 +41,12 @@ The adapter writes:
 - support items to `support_tickets`
 - approvals to `approvals`
 - agent runs to `agent_runs`
-- agent missions, resource versions, approval receipts, and controlled transitions through the MCP service
+- agent missions, approved evidence, structured model runs, resource versions, approval receipts, and controlled transitions through the MCP service and its separate database
 - listing dry-runs and write traces to `audit_events`
 
 Private renter messages, emails, and support details belong only in runtime storage. Public repos and GitHub issues receive sanitized summaries.
+
+The portal and MCP currently own different ledgers. Their `DATABASE_URL` values must never target the same logical database. The authenticated MCP API is the only data and authority bridge between them.
 
 ## Tenant Isolation
 

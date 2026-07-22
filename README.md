@@ -14,7 +14,7 @@ Vercel/Next.js template for a premium rental-property website, renter self-servi
 - implementers who pair Vercel frontends with GitHub-approved property knowledge
 - community builders who want a free, safe starting point for AI-assisted property operations
 
-This is the portal half of Property Intelligence OS. Pair it with `property-os-template` for agent roles, MCP boundaries, owner runbooks, partner offer design, and Railway worker architecture.
+This is the portal half of Property Intelligence OS. Pair it with `property-os-template` for agent roles, MCP boundaries, owner runbooks, partner offer design, the schema-valid install planner, and Railway control-plane architecture.
 
 ## Routes
 
@@ -55,7 +55,9 @@ npm run db:rls:smoke
 
 The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions use a demo in-memory store by default and switch to the Postgres adapter when `DATABASE_URL` is configured. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues or notification workers.
 
-The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, agent missions, transition proposals, approval receipts, controlled transitions, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
+The first portal schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, portal agent runs, agent missions, transition proposals, approval receipts, controlled transitions, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
+
+Production uses two tenant-isolated logical databases and separate runtime roles: this portal database on Vercel and the governed control-plane ledger on Railway. Never point both `DATABASE_URL` values at the same logical database; the authenticated MCP API is the boundary between them.
 
 Runtime APIs:
 
@@ -92,6 +94,8 @@ The protected `/admin/agent-workbench` is the owner-facing four-stage loop: reco
 The route `/admin/setup` includes the install proof cockpit: proof score, runtime posture, required commands, phase gates, missing production env names, owner approval boundaries, and blocked v1 actions.
 
 The protected API route `/api/install/proof-packet` exposes the same evidence for partner audits and onboarding automation. The local command `npm run install:proof` prints a public-safe JSON proof packet that reports environment key names and configured booleans only; it does not print secret values.
+
+Generate the upstream configuration packet in `property-os-template` with `npm run install:plan -- --config <public-safe-config.json>`, then attach its hashes and this portal's live proof packet to the handoff.
 
 ## V1 Safety
 
