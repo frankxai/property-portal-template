@@ -29,16 +29,22 @@ const requiredFiles = [
   "lib/install-proof.ts",
   "lib/auth.ts",
   "lib/runtime-contracts.ts",
+  "lib/agent-control-plane.ts",
   "lib/runtime-store.ts",
   "app/admin/setup/page.tsx",
   "app/admin/implementation/page.tsx",
+  "app/admin/control-center/page.tsx",
+  "app/api/agent-missions/route.ts",
   "app/api/install/proof-packet/route.ts",
   "db/schema.sql",
   "db/rls.sql",
   "scripts/auth-boundary-smoke.mjs",
+  "scripts/visual-qa.mjs",
   "scripts/postgres-rls-smoke.mjs",
   "docs/self-service-install.md",
   "docs/implementation-cockpit.md",
+  "docs/agent-control-center-spec.md",
+  "design-loop-evidence.json",
   "docs/operator-runbook.md"
 ];
 
@@ -110,6 +116,8 @@ const packet = {
     "npm run build",
     "npm run smoke",
     "npm run auth:smoke",
+    "npm run visual:qa",
+    "npm run audit",
     "npm run install:proof",
     "npm run db:rls:smoke"
   ],

@@ -1,5 +1,5 @@
 import postgres from "postgres";
-import type { AgentRunPayload, ApprovalRecord, AuditEvent, ListingDryRunPayload } from "@/lib/runtime-contracts";
+import type { AgentMission, AgentRunPayload, ApprovalRecord, AuditEvent, ListingDryRunPayload } from "@/lib/runtime-contracts";
 import { runtimeHealth } from "@/lib/runtime-contracts";
 import type { InquiryPayload, SupportPayload } from "@/lib/types";
 
@@ -12,7 +12,7 @@ export type RuntimePersistenceReceipt = {
 
 export type RuntimeQueueItem = {
   id: string;
-  kind: "inquiry" | "support" | "approval" | "agent-run" | "listing-dry-run" | "notification";
+  kind: "inquiry" | "support" | "approval" | "agent-mission" | "agent-run" | "listing-dry-run" | "notification";
   route: string;
   sanitizedSummary: string;
   ownerAction: string;
@@ -257,6 +257,44 @@ export async function persistAgentRun(input: {
   }
 }
 
+export async function persistAgentMission(input: {
+  mission: AgentMission;
+  auditEvent: AuditEvent;
+}): Promise<RuntimePersistenceReceipt> {
+  const item: RuntimeQueueItem = {
+    id: input.mission.id,
+    kind: "agent-mission",
+    route: "owner-mission-review",
+    sanitizedSummary: `${input.mission.role} mission planned against ${input.mission.successMetric}.`,
+    ownerAction: input.mission.ownerAction,
+    ownerApprovalRequired: true,
+    createdAt: input.mission.createdAt
+  };
+  const sql = getSql();
+  if (!sql) return demoRecord(item, input.auditEvent);
+
+  try {
+    await withOrganizationContext(sql, async (scopedSql) => {
+      await scopedSql`
+        insert into agent_missions (
+          id, organization_id, role, property_slug, objective, success_metric,
+          status, authority, stages, owner_action, created_at, updated_at
+        )
+        values (
+          ${input.mission.id}, ${organizationId()}, ${input.mission.role}, ${input.mission.propertySlug},
+          ${input.mission.objective}, ${input.mission.successMetric}, ${input.mission.status},
+          ${input.mission.authority}, ${scopedSql.json(input.mission.stages)}, ${input.mission.ownerAction},
+          ${input.mission.createdAt}, ${input.mission.createdAt}
+        )
+      `;
+      await insertAudit(scopedSql, input.auditEvent, "agent_mission", input.mission.id);
+    });
+    return { adapter: "postgres", status: "recorded", target: "agent_missions", detail: "Recorded agent mission in Postgres runtime storage." };
+  } catch {
+    return failureReceipt("postgres", "agent_missions");
+  }
+}
+
 export async function persistListingDryRun(input: {
   id: string;
   payload: ListingDryRunPayload;
@@ -330,7 +368,7 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
     const counts = demoState.queue.reduce<RuntimeSnapshot["counts"]>((acc, item) => {
       acc[item.kind] += 1;
       return acc;
-    }, { inquiry: 0, support: 0, approval: 0, "agent-run": 0, "listing-dry-run": 0, notification: 0, audit: demoState.audit.length });
+    }, { inquiry: 0, support: 0, approval: 0, "agent-mission": 0, "agent-run": 0, "listing-dry-run": 0, notification: 0, audit: demoState.audit.length });
 
     return {
       health,
@@ -346,12 +384,13 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
   }
 
   try {
-    const [inquiries, support, approvals, agentRuns, notifications, listingDryRuns, audit] = await withOrganizationContext(
+    const [inquiries, support, approvals, agentMissions, agentRuns, notifications, listingDryRuns, audit] = await withOrganizationContext(
       sql,
       async (scopedSql) => Promise.all([
         scopedSql`select count(*)::int as count from inquiries where organization_id = ${organizationId()}`,
         scopedSql`select count(*)::int as count from support_tickets where organization_id = ${organizationId()}`,
         scopedSql`select count(*)::int as count from approvals where organization_id = ${organizationId()}`,
+        scopedSql`select count(*)::int as count from agent_missions where organization_id = ${organizationId()}`,
         scopedSql`select count(*)::int as count from agent_runs where organization_id = ${organizationId()}`,
         scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'notification'`,
         scopedSql`select count(*)::int as count from audit_events where organization_id = ${organizationId()} and subject_type = 'listing_dry_run'`,
@@ -365,6 +404,7 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
         inquiry: inquiries[0]?.count ?? 0,
         support: support[0]?.count ?? 0,
         approval: approvals[0]?.count ?? 0,
+        "agent-mission": agentMissions[0]?.count ?? 0,
         "agent-run": agentRuns[0]?.count ?? 0,
         "listing-dry-run": listingDryRuns[0]?.count ?? 0,
         notification: notifications[0]?.count ?? 0,
@@ -381,7 +421,7 @@ export async function runtimeSnapshot(): Promise<RuntimeSnapshot> {
   } catch {
     return {
       health,
-      counts: { inquiry: 0, support: 0, approval: 0, "agent-run": 0, "listing-dry-run": 0, notification: 0, audit: 0 },
+      counts: { inquiry: 0, support: 0, approval: 0, "agent-mission": 0, "agent-run": 0, "listing-dry-run": 0, notification: 0, audit: 0 },
       recentQueue: [],
       recentAudit: [],
       productionNotes: [

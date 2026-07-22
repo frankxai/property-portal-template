@@ -7,7 +7,9 @@ const runtimeContracts = await readFile(path.join(process.cwd(), "lib", "runtime
 const implementationSource = await readFile(path.join(process.cwd(), "lib", "implementation.ts"), "utf8");
 const installProofSource = await readFile(path.join(process.cwd(), "lib", "install-proof.ts"), "utf8");
 const runtimeStoreSource = await readFile(path.join(process.cwd(), "lib", "runtime-store.ts"), "utf8");
+const controlPlaneSource = await readFile(path.join(process.cwd(), "lib", "agent-control-plane.ts"), "utf8");
 const authSource = await readFile(path.join(process.cwd(), "lib", "auth.ts"), "utf8");
+const schemaSource = await readFile(path.join(process.cwd(), "db", "schema.sql"), "utf8");
 const rlsSource = await readFile(path.join(process.cwd(), "db", "rls.sql"), "utf8");
 const seedSource = await readFile(path.join(process.cwd(), "db", "seed-sample.sql"), "utf8");
 const rlsSmokeSource = await readFile(path.join(process.cwd(), "scripts", "postgres-rls-smoke.mjs"), "utf8");
@@ -17,10 +19,14 @@ const installProofRouteSource = await readFile(path.join(process.cwd(), "app", "
 const selfServiceInstallDocs = await readFile(path.join(process.cwd(), "docs", "self-service-install.md"), "utf8");
 await readFile(path.join(process.cwd(), "lib", "owner-notifications.ts"), "utf8");
 await readFile(path.join(process.cwd(), "app", "admin", "sign-in", "page.tsx"), "utf8");
+const controlCenterSource = await readFile(path.join(process.cwd(), "app", "admin", "control-center", "page.tsx"), "utf8");
+const missionRouteSource = await readFile(path.join(process.cwd(), "app", "api", "agent-missions", "route.ts"), "utf8");
 await readFile(path.join(process.cwd(), "app", "api", "auth", "owner", "sign-in", "route.ts"), "utf8");
 await readFile(path.join(process.cwd(), "scripts", "generate-owner-passcode-hash.mjs"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "v0-implementation-brief.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "implementation-cockpit.md"), "utf8");
+await readFile(path.join(process.cwd(), "docs", "agent-control-center-spec.md"), "utf8");
+await readFile(path.join(process.cwd(), "design-loop-evidence.json"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "runtime-adapter.md"), "utf8");
 await readFile(path.join(process.cwd(), "docs", "owner-auth.md"), "utf8");
 await readFile(path.join(process.cwd(), ".github", "ISSUE_TEMPLATE", "install-support.md"), "utf8");
@@ -97,6 +103,7 @@ const requiredRuntimeStoreSnippets = [
   "persistSupport",
   "persistApproval",
   "persistAgentRun",
+  "persistAgentMission",
   "persistListingDryRun",
   "withOrganizationContext",
   "property_os.organization_id",
@@ -112,6 +119,40 @@ const requiredAuthSnippets = [
   "ownerSessionCookie"
 ];
 
+const requiredControlPlaneSnippets = [
+  "Property Steward",
+  "Implementation Lead",
+  "observe",
+  "verify",
+  "Under 30 minutes",
+  "server receipt",
+  "blockedActions"
+];
+
+const requiredSchemaSnippets = [
+  "agent_missions",
+  "transition_proposals",
+  "approval_receipts",
+  "controlled_transitions",
+  "unique (organization_id, idempotency_key)"
+];
+
+const requiredControlCenterSnippets = [
+  "Owner control center",
+  "Unsafe actions enabled",
+  "AgentMissionForm",
+  "authorityContract",
+  "successScorecard"
+];
+
+const requiredMissionRouteSnippets = [
+  "requireOwnerApiAccess",
+  "persistAgentMission",
+  "ownerApprovalRequired",
+  "persistence.status === \"failed\"",
+  "owner-mission-review"
+];
+
 const requiredRlsSnippets = [
   "property_os_current_organization_id",
   "enable row level security",
@@ -119,6 +160,10 @@ const requiredRlsSnippets = [
   "organizations_tenant_isolation",
   "properties_tenant_isolation",
   "support_tickets_tenant_isolation",
+  "agent_missions_tenant_isolation",
+  "transition_proposals_tenant_isolation",
+  "approval_receipts_tenant_isolation",
+  "controlled_transitions_tenant_isolation",
   "property_os_property_in_current_org"
 ];
 
@@ -188,6 +233,30 @@ for (const snippet of requiredInstallProofSnippets) {
 for (const snippet of requiredRuntimeStoreSnippets) {
   if (!runtimeStoreSource.includes(snippet)) {
     throw new Error(`lib/runtime-store.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredControlPlaneSnippets) {
+  if (!controlPlaneSource.includes(snippet)) {
+    throw new Error(`lib/agent-control-plane.ts is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredSchemaSnippets) {
+  if (!schemaSource.includes(snippet)) {
+    throw new Error(`db/schema.sql is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredControlCenterSnippets) {
+  if (!controlCenterSource.includes(snippet)) {
+    throw new Error(`app/admin/control-center/page.tsx is missing ${snippet}`);
+  }
+}
+
+for (const snippet of requiredMissionRouteSnippets) {
+  if (!missionRouteSource.includes(snippet)) {
+    throw new Error(`app/api/agent-missions/route.ts is missing ${snippet}`);
   }
 }
 

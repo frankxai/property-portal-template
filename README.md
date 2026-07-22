@@ -5,7 +5,7 @@
 [Download ZIP](https://github.com/frankxai/property-portal-template/archive/refs/heads/main.zip) ·
 [Operating System Template](https://github.com/frankxai/property-os-template)
 
-Vercel/Next.js template for a premium rental-property website, renter self-service portal, inquiry capture, support intake, owner dashboard, and listing draft admin.
+Vercel/Next.js template for a premium rental-property website, renter self-service portal, inquiry capture, support intake, owner dashboard, listing draft admin, and owner-controlled agent team.
 
 ## Who This Is For
 
@@ -29,6 +29,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/admin/runtime`: runtime storage, notification, capability, and queue posture
 - `/admin/listings`: listing draft studio
 - `/admin/integrations`: approved/manual/planned integration cockpit
+- `/admin/control-center`: specialist missions, authority boundary, runtime posture, lifecycle, and outcome scorecard
 - `/admin/agent-runs`: owner-reviewed agent run ledger
 - `/admin/ops`: operating cadence, success criteria, and release gates
 
@@ -42,6 +43,8 @@ npm run typecheck
 npm run build
 npm run smoke
 npm run auth:smoke
+npm run visual:qa
+npm run audit
 npm run install:proof
 npm run auth:hash -- "private owner passcode"
 npm run db:rls:smoke
@@ -51,7 +54,7 @@ npm run db:rls:smoke
 
 The starter uses repo content in `data/properties.ts` for approved public facts. Runtime submissions use a demo in-memory store by default and switch to the Postgres adapter when `DATABASE_URL` is configured. Production installs should store submissions in a secure database and send only sanitized summaries to GitHub issues or notification workers.
 
-The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
+The first production schema lives in `db/schema.sql`. It separates organizations, properties, units, knowledge articles, listing drafts, inquiries, support tickets, approvals, agent runs, agent missions, transition proposals, approval receipts, controlled transitions, and audit events. Apply `db/rls.sql` after the schema to enable tenant-scoped row-level security, then use `db/seed-sample.sql` for a public-safe local production-mode smoke seed.
 
 Runtime APIs:
 
@@ -72,6 +75,12 @@ The route `/admin/implementation` turns the template into an installable product
 
 The API route `/api/implementation/readiness` exposes the same contract for automation, partner audits, and future onboarding flows. It intentionally reports missing environment variables and blocked v1 actions instead of pretending the demo template is production-persistent.
 
+## Agent Control Center
+
+The protected route `/admin/control-center` converts the agent team into an operational surface: ten narrow specialist mandates, six mission states, an explicit authority contract, runtime proof counts, and owner/renter/property/partner success targets. `/api/agent-missions` records a draft-only mission with one property scope, objective, success metric, owner action, persistence receipt, notification receipt, and audit event.
+
+The portal stores mission records in demo memory or Postgres. The paired `property-os-template` MCP server proves the proposal, owner decision, single-use receipt, exact internal apply, audit, and undo contract in memory. A production install must implement that receipt lifecycle transactionally against the Postgres transition tables before enabling any controlled state change. External publication, messaging, dispatch, applicant decisions, access disclosure, pricing, and availability remain blocked.
+
 ## Self-Service Install Proof
 
 The route `/admin/setup` includes the install proof cockpit: proof score, runtime posture, required commands, phase gates, missing production env names, owner approval boundaries, and blocked v1 actions.
@@ -89,6 +98,8 @@ The protected API route `/api/install/proof-packet` exposes the same evidence fo
 
 Deploy as a normal Next.js project or use the deploy button above after the repository is public. Use preview deployments for owner review before production.
 
+The v0.2 baseline uses Next.js 16.2.11 and React 19.2.8. `sharp` is pinned to the patched 0.35.3 line through an npm override until the framework dependency resolves there by default.
+
 ## v0 Path
 
 Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the interface while preserving the safety model: approved facts, human approval, no automatic commitments, and operational dashboard density.
@@ -100,6 +111,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 - `docs/implementation-cockpit.md`
 - `docs/runtime-adapter.md`
 - `docs/portal-scene-brief.md`
+- `docs/agent-control-center-spec.md`
 - `docs/product-roadmap.md`
 - `docs/production-hardening.md`
 - `docs/v0-implementation-brief.md`

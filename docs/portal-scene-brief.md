@@ -28,6 +28,7 @@ Avoid generic SaaS hero composition. Real property media and operational state s
 | `/admin/setup` | onboarding checklist | missing facts before launch |
 | `/admin/listings` | channel draft studio | manual/API publication mode and missing facts |
 | `/admin/integrations` | integration cockpit | approved paths over unsafe automation |
+| `/admin/control-center` | owner-controlled specialist team | bounded mission, authority, proof, and measurable outcome |
 | `/admin/agent-runs` | agent ledger | source, risk, outcome, owner action |
 
 ## Interaction Rules
@@ -36,6 +37,7 @@ Avoid generic SaaS hero composition. Real property media and operational state s
 - Public forms sanitize input and store only demo/runtime-safe records in v1.
 - Listing publication, pricing, availability, lease, refund, vendor dispatch, and urgent repair commitments remain owner-approved.
 - Admin pages show missing facts instead of pretending the workflow is complete.
+- Control-center missions always show one property scope, one specialist, one success metric, and draft-only authority.
 
 ## Visual QA Notes
 
@@ -49,4 +51,4 @@ Avoid generic SaaS hero composition. Real property media and operational state s
 
 Target score before public template promotion: 26/30.
 
-Current template intent score: 24/30 pending live desktop/mobile inspection and real property media replacement.
+The `/admin/control-center` surface scores 27/30 after exact 1440px and 390px browser inspection with no root overflow or clipped control text. The public property experience still requires real owner media before a client production launch.

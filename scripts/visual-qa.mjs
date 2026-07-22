@@ -1,0 +1,119 @@
+import { spawn } from "node:child_process";
+import { access, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
+import { chromium } from "playwright-core";
+
+const port = Number(process.env.VISUAL_QA_PORT ?? 3214);
+const baseUrl = `http://127.0.0.1:${port}`;
+const route = "/admin/control-center";
+const nextBin = fileURLToPath(new URL("../node_modules/next/dist/bin/next", import.meta.url));
+const artifactDir = path.join(process.cwd(), "artifacts", "visual-qa");
+const isWindows = process.platform === "win32";
+const browserCandidates = [
+  process.env.PLAYWRIGHT_CHROME_PATH,
+  "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+  "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+  "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+  "/usr/bin/google-chrome",
+  "/usr/bin/chromium"
+].filter(Boolean);
+
+async function browserPath() {
+  for (const candidate of browserCandidates) {
+    try {
+      await access(candidate);
+      return candidate;
+    } catch {
+      // Try the next known browser path.
+    }
+  }
+  throw new Error("No supported local Chrome or Edge executable found. Set PLAYWRIGHT_CHROME_PATH.");
+}
+
+const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
+  cwd: process.cwd(),
+  env: { ...process.env, PORT: String(port), PROPERTY_OS_DEMO_AUTH: "true" },
+  stdio: ["ignore", "pipe", "pipe"]
+});
+let serverOutput = "";
+server.stdout.on("data", (chunk) => { serverOutput += chunk.toString(); });
+server.stderr.on("data", (chunk) => { serverOutput += chunk.toString(); });
+
+async function stopServer() {
+  if (server.exitCode !== null) return;
+  if (isWindows && server.pid) {
+    const killer = spawn("taskkill", ["/pid", String(server.pid), "/t", "/f"], { stdio: "ignore" });
+    await new Promise((resolve) => killer.once("exit", resolve));
+  } else {
+    server.kill("SIGTERM");
+  }
+}
+
+async function waitForServer() {
+  for (let attempt = 0; attempt < 50; attempt += 1) {
+    if (server.exitCode !== null) throw new Error(`next start exited early.\n${serverOutput}`);
+    try {
+      const response = await fetch(`${baseUrl}${route}`);
+      if (response.ok) return;
+    } catch {
+      // Keep polling.
+    }
+    await sleep(400);
+  }
+  throw new Error(`Timed out waiting for ${baseUrl}.\n${serverOutput}`);
+}
+
+async function inspect(page, name, viewport) {
+  await page.setViewportSize(viewport);
+  await page.emulateMedia({ reducedMotion: "reduce", colorScheme: "dark" });
+  await page.goto(`${baseUrl}${route}`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "One accountable team. Every action leaves proof." }).waitFor();
+  await page.getByRole("button", { name: "Queue mission" }).waitFor();
+
+  const layout = await page.evaluate(() => {
+    const root = document.documentElement;
+    const required = [".control-header", ".metric-strip", ".control-grid", ".lifecycle", ".table-list", ".score-list"];
+    const missing = required.filter((selector) => !document.querySelector(selector));
+    const clippedText = [...document.querySelectorAll("h1, h2, h3, p, strong, button, label, .status")]
+      .filter((element) => {
+        const rect = element.getBoundingClientRect();
+        const style = getComputedStyle(element);
+        return style.display !== "none" && rect.width > 0 && (rect.right > root.clientWidth + 1 || rect.left < -1);
+      })
+      .map((element) => element.textContent?.trim().slice(0, 90))
+      .filter(Boolean);
+    return {
+      viewportWidth: root.clientWidth,
+      scrollWidth: root.scrollWidth,
+      overflowPixels: Math.max(0, root.scrollWidth - root.clientWidth),
+      missing,
+      clippedText
+    };
+  });
+
+  if (layout.overflowPixels > 1 || layout.missing.length > 0 || layout.clippedText.length > 0) {
+    throw new Error(`${name} layout failed: ${JSON.stringify(layout)}`);
+  }
+
+  const screenshot = path.join(artifactDir, `control-center-${name}.png`);
+  await page.screenshot({ path: screenshot, fullPage: true });
+  return { name, screenshot, ...layout };
+}
+
+let browser;
+try {
+  await mkdir(artifactDir, { recursive: true });
+  await waitForServer();
+  browser = await chromium.launch({ executablePath: await browserPath(), headless: true });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  const evidence = [];
+  evidence.push(await inspect(page, "desktop", { width: 1440, height: 1200 }));
+  evidence.push(await inspect(page, "mobile", { width: 390, height: 844 }));
+  console.log(JSON.stringify({ route, evidence }, null, 2));
+} finally {
+  await browser?.close();
+  await stopServer();
+}

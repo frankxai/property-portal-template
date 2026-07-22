@@ -17,6 +17,7 @@ export type AuditEventType =
   | "inquiry.created"
   | "support.created"
   | "approval.requested"
+  | "agent_mission.created"
   | "agent_run.logged"
   | "listing_dry_run.created";
 
@@ -62,6 +63,22 @@ export type AgentRunPayload = {
   trigger: string;
   output: string;
   approvalRisk: ApprovalRisk;
+};
+
+export type AgentMissionStatus = "planned" | "grounding" | "drafting" | "owner-review" | "verified" | "stopped";
+
+export type AgentMission = {
+  id: string;
+  role: AgentRole;
+  propertySlug: string | null;
+  objective: string;
+  successMetric: string;
+  status: AgentMissionStatus;
+  authority: "draft-only";
+  ownerApprovalRequired: true;
+  stages: string[];
+  ownerAction: string;
+  createdAt: string;
 };
 
 export type ListingDryRunPayload = {
@@ -184,6 +201,27 @@ export function createAgentRun(input: AgentRunPayload) {
       actorRole: "agent",
       summary: `${input.role}: ${input.trigger.slice(0, 140)}`
     })
+  };
+}
+
+export function createAgentMission(input: {
+  role: AgentRole;
+  propertySlug?: string;
+  objective: string;
+  successMetric: string;
+}): AgentMission {
+  return {
+    id: createRuntimeId("mission"),
+    role: input.role,
+    propertySlug: input.propertySlug || null,
+    objective: input.objective,
+    successMetric: input.successMetric,
+    status: "planned",
+    authority: "draft-only",
+    ownerApprovalRequired: true,
+    stages: ["observe", "draft", "review", "decide", "apply", "verify"],
+    ownerAction: "Review the mission objective and evidence gate before any agent output is reused.",
+    createdAt: new Date().toISOString()
   };
 }
 

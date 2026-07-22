@@ -20,6 +20,7 @@ const routes = [
   "/admin/runtime",
   "/admin/listings",
   "/admin/integrations",
+  "/admin/control-center",
   "/admin/agent-runs",
   "/admin/ops"
 ];
@@ -201,6 +202,12 @@ try {
     "No consequential action leaves the workspace automatically.",
     "npm run install:proof"
   ]);
+  await expectPageContains("/admin/control-center", [
+    "One accountable team. Every action leaves proof.",
+    "Approval is not execution.",
+    "Unsafe actions enabled",
+    "Queue mission"
+  ]);
 
   await postJson("/api/inquiries", {
     propertySlug: "urban-haven-sample",
@@ -223,6 +230,16 @@ try {
     output: "Drafted listing copy for owner review.",
     approvalRisk: "owner-required"
   });
+
+  const mission = await postJson("/api/agent-missions", {
+    role: "property-steward",
+    propertySlug: "urban-haven-sample",
+    objective: "Prepare one owner-review artifact from approved sample facts.",
+    successMetric: "One artifact with zero invented facts and an explicit owner decision."
+  });
+  if (mission.authority !== "draft-only" || !mission.stages?.includes("verify")) {
+    throw new Error("/api/agent-missions did not return the bounded mission contract");
+  }
 
   await postJson("/api/listing-dry-run", {
     propertySlug: "urban-haven-sample",

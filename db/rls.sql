@@ -33,6 +33,10 @@ alter table inquiries enable row level security;
 alter table support_tickets enable row level security;
 alter table approvals enable row level security;
 alter table agent_runs enable row level security;
+alter table agent_missions enable row level security;
+alter table transition_proposals enable row level security;
+alter table approval_receipts enable row level security;
+alter table controlled_transitions enable row level security;
 alter table audit_events enable row level security;
 
 alter table organizations force row level security;
@@ -45,6 +49,10 @@ alter table inquiries force row level security;
 alter table support_tickets force row level security;
 alter table approvals force row level security;
 alter table agent_runs force row level security;
+alter table agent_missions force row level security;
+alter table transition_proposals force row level security;
+alter table approval_receipts force row level security;
+alter table controlled_transitions force row level security;
 alter table audit_events force row level security;
 
 drop policy if exists organizations_tenant_isolation on organizations;
@@ -89,6 +97,30 @@ create policy agent_runs_tenant_isolation on agent_runs
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());
 
+drop policy if exists agent_missions_tenant_isolation on agent_missions;
+create policy agent_missions_tenant_isolation on agent_missions
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists transition_proposals_tenant_isolation on transition_proposals;
+create policy transition_proposals_tenant_isolation on transition_proposals
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists approval_receipts_tenant_isolation on approval_receipts;
+create policy approval_receipts_tenant_isolation on approval_receipts
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists controlled_transitions_tenant_isolation on controlled_transitions;
+create policy controlled_transitions_tenant_isolation on controlled_transitions
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
 drop policy if exists audit_events_tenant_isolation on audit_events;
 create policy audit_events_tenant_isolation on audit_events
   for all
@@ -112,4 +144,3 @@ create policy listing_drafts_property_tenant_isolation on listing_drafts
   for all
   using (property_os_property_in_current_org(property_id))
   with check (property_os_property_in_current_org(property_id));
-

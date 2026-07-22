@@ -4,17 +4,10 @@ import { notifyOwner } from "@/lib/owner-notifications";
 import { persistAgentRun } from "@/lib/runtime-store";
 import { sanitizeText } from "@/lib/sanitize";
 import { createAgentRun } from "@/lib/runtime-contracts";
+import { agentTeam } from "@/lib/agent-control-plane";
 import type { AgentRole, ApprovalRisk } from "@/lib/types";
 
-const roles: AgentRole[] = [
-  "property-steward",
-  "listing-ops",
-  "inquiry-concierge",
-  "renter-guide",
-  "maintenance-triage",
-  "vacancy-pipeline",
-  "compliance-reviewer"
-];
+const roles: AgentRole[] = agentTeam.map((profile) => profile.id);
 
 const risks: ApprovalRisk[] = ["low", "medium", "high", "owner-required"];
 

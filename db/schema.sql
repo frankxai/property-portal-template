@@ -134,6 +134,68 @@ create table if not exists agent_runs (
   created_at timestamptz not null default now()
 );
 
+create table if not exists agent_missions (
+  id text primary key,
+  organization_id text not null references organizations(id) on delete cascade,
+  role text not null,
+  property_slug text,
+  objective text not null,
+  success_metric text not null,
+  status text not null check (status in ('planned', 'grounding', 'drafting', 'owner-review', 'verified', 'stopped')),
+  authority text not null check (authority = 'draft-only'),
+  stages jsonb not null default '[]'::jsonb,
+  owner_action text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists transition_proposals (
+  id text primary key,
+  organization_id text not null references organizations(id) on delete cascade,
+  operation text not null,
+  resource_id text not null,
+  base_version_hash text not null,
+  payload_hash text not null,
+  summary text not null,
+  status text not null check (status in ('pending', 'approved', 'rejected', 'applied', 'superseded')),
+  created_by text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists approval_receipts (
+  id text primary key,
+  proposal_id text not null references transition_proposals(id) on delete cascade,
+  organization_id text not null references organizations(id) on delete cascade,
+  actor_id text not null,
+  actor_role text not null,
+  operation text not null,
+  resource_id text not null,
+  base_version_hash text not null,
+  payload_hash text not null,
+  policy_version text not null,
+  scopes jsonb not null default '[]'::jsonb,
+  status text not null check (status in ('active', 'consumed', 'revoked', 'expired')),
+  issued_at timestamptz not null,
+  expires_at timestamptz not null,
+  consumed_at timestamptz
+);
+
+create table if not exists controlled_transitions (
+  id text primary key,
+  organization_id text not null references organizations(id) on delete cascade,
+  proposal_id text not null references transition_proposals(id),
+  approval_receipt_id text not null references approval_receipts(id),
+  idempotency_key text not null,
+  operation text not null,
+  resource_id text not null,
+  previous_version_hash text not null,
+  new_version_hash text not null,
+  undo_metadata jsonb not null default '{}'::jsonb,
+  applied_by text not null,
+  created_at timestamptz not null default now(),
+  unique (organization_id, idempotency_key)
+);
+
 create table if not exists audit_events (
   id text primary key,
   organization_id text not null references organizations(id) on delete cascade,

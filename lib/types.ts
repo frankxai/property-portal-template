@@ -22,7 +22,10 @@ export type AgentRole =
   | "renter-guide"
   | "maintenance-triage"
   | "vacancy-pipeline"
-  | "compliance-reviewer";
+  | "renovation-planner"
+  | "compliance-reviewer"
+  | "visual-qa"
+  | "implementation-lead";
 
 export type PropertyProfile = {
   id: string;

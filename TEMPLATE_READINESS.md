@@ -13,13 +13,14 @@ Vercel/Next.js portal template paired with a GitHub-approved property knowledge 
 
 ## Buyer Outcome
 
-Deploy a polished property website, renter self-service portal, inquiry/support intake, owner dashboard, listing draft studio, integration cockpit, and agent-run ledger.
+Deploy a polished property website, renter self-service portal, inquiry/support intake, owner dashboard, listing draft studio, integration cockpit, agent mission control center, and agent-run ledger.
 
 ## Deploy Target
 
 - Vercel for the web portal
 - GitHub for template source, forks, issues, releases, and sample content
 - secure database/auth/storage/email adapters for production installs
+- authenticated Streamable HTTP MCP control plane on Railway for hosted agent access
 
 ## Monetization Path
 
@@ -29,6 +30,8 @@ Deploy a polished property website, renter self-service portal, inquiry/support 
 - premium adapter bundle
 - future Vercel/v0 remix package
 
+Safety, schemas, release checks, sample workflows, and the owner authority boundary remain in the free template. Paid services cover private implementation, brand/media, hosting, integrations, monitoring, training, and accountable operations.
+
 ## Required Before Production
 
 - replace sample property data with approved owner facts
@@ -36,6 +39,8 @@ Deploy a polished property website, renter self-service portal, inquiry/support 
 - configure `OWNER_PORTAL_SECRET` and `OWNER_PORTAL_PASSCODE_HASH`
 - run `npm run install:proof` and attach the proof packet to the owner or partner handoff
 - run `npm run db:rls:smoke` against the target database
+- apply the v0.2 mission and controlled-transition schema before using database mode
+- implement transition receipts transactionally before enabling any controlled state change
 - configure owner notification
 - add privacy policy and local legal review
 - run preview QA on real photos and mobile
@@ -45,6 +50,6 @@ Deploy a polished property website, renter self-service portal, inquiry/support 
 
 1. Push this repo as `frankxai/property-portal-template`.
 2. Mark it as a GitHub template.
-3. Create release `v0.1.0`.
+3. Create a release after local gates, security scan, desktop/mobile visual QA, and Vercel preview verification pass.
 4. Verify the Vercel deploy button.
 5. Link it from the FrankX Property Intelligence OS page.

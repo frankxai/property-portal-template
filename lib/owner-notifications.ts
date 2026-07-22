@@ -3,7 +3,7 @@ import { persistNotification, type RuntimeQueueItem } from "@/lib/runtime-store"
 
 export type OwnerNotificationInput = {
   sourceId: string;
-  kind: "inquiry" | "support" | "approval" | "agent-run" | "listing-dry-run";
+  kind: "inquiry" | "support" | "approval" | "agent-mission" | "agent-run" | "listing-dry-run";
   urgency: "standard" | "urgent" | "weekly";
   route: string;
   sanitizedSummary: string;

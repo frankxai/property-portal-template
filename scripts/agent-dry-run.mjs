@@ -1,5 +1,6 @@
 import { classifySupport, integrations, sampleAgentRuns, setupSteps } from "../lib/product.ts";
-import { blockedV1Actions, createAgentRun, createListingDryRun, runtimeHealth } from "../lib/runtime-contracts.ts";
+import { agentTeam, authorityContract, missionLifecycle, successScorecard } from "../lib/agent-control-plane.ts";
+import { blockedV1Actions, createAgentMission, createAgentRun, createListingDryRun, runtimeHealth } from "../lib/runtime-contracts.ts";
 
 const urgent = classifySupport({
   propertySlug: "urban-haven-sample",
@@ -61,6 +62,25 @@ if (!dryRun.ownerApprovalRequired || !dryRun.blockedActions.includes("publish li
 
 if (!blockedV1Actions.includes("dispatch vendor")) {
   throw new Error("Blocked v1 actions must include vendor dispatch.");
+}
+
+const mission = createAgentMission({
+  role: "property-steward",
+  propertySlug: "urban-haven-sample",
+  objective: "Prepare one owner-review artifact from approved facts.",
+  successMetric: "One reviewable artifact with zero invented facts."
+});
+
+if (mission.authority !== "draft-only" || !mission.ownerApprovalRequired || mission.stages.at(-1) !== "verify") {
+  throw new Error("Agent missions must remain draft-only, owner-reviewed, and verification-bound.");
+}
+
+if (agentTeam.length < 10 || missionLifecycle.length !== 6 || successScorecard.length < 6) {
+  throw new Error("The control center must expose the full specialist, lifecycle, and outcome contracts.");
+}
+
+if (!authorityContract.controlledTransition.includes("server receipt") || authorityContract.blockedActions.length < 6) {
+  throw new Error("Authority contract must expose receipt control and blocked consequential actions.");
 }
 
 console.log("Agent workflow dry run passed.");

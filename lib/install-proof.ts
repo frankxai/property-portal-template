@@ -95,7 +95,7 @@ export function createInstallProofPacket() {
       status: hasAgentSubstrate ? "manual" : "configure",
       ownerOutcome: "Specialist agents can draft listing copy, replies, support summaries, and weekly reviews inside approved-facts boundaries.",
       implementerAction: "Pair with property-os-template, configure MCP and agent runtime endpoints, and dry-run every agent role before owner handoff.",
-      evidence: ["property-os-template", "MCP capability map", "agent run ledger", "approval records"],
+      evidence: ["property-os-template", "/admin/control-center", "/api/agent-missions", "agent mission and run ledgers", "MCP authority contract"],
       commands: ["npm run agent:dry-run", "npm run install:proof"],
       gate: "Agents draft only; pricing, availability, lease, legal, payment, repair, access, and publication outputs require owner approval."
     },
@@ -125,8 +125,8 @@ export function createInstallProofPacket() {
       status: "manual",
       ownerOutcome: "The install is ready for premium owner use, partner delivery, or managed-service onboarding with clear proof and pricing path.",
       implementerAction: "Run final checks, verify Vercel preview on desktop and mobile, export proof packet, and package the offer ladder for the owner or agency.",
-      evidence: ["TEMPLATE_READINESS.md", "docs/self-service-install.md", "docs/implementation-cockpit.md", "docs/success-criteria.md"],
-      commands: ["npm run validate", "npm run typecheck", "npm run build", "npm run smoke", "npm run auth:smoke", "npm run install:proof"],
+      evidence: ["TEMPLATE_READINESS.md", "docs/self-service-install.md", "docs/implementation-cockpit.md", "docs/success-criteria.md", "design-loop-evidence.json"],
+      commands: ["npm run validate", "npm run typecheck", "npm run build", "npm run smoke", "npm run auth:smoke", "npm run visual:qa", "npm run audit", "npm run install:proof"],
       gate: "Owner approves preview, proof packet, private-data boundary, support scope, and go-live checklist before production."
     }
   ];
@@ -159,6 +159,18 @@ export function createInstallProofPacket() {
     {
       command: "npm run auth:smoke",
       purpose: "Protected owner/admin pages and APIs reject anonymous access and accept only approved access.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run visual:qa",
+      purpose: "Capture exact desktop/mobile evidence and reject horizontal overflow or clipped control text.",
+      requiredBefore: "owner-preview",
+      requiresLiveSecret: false
+    },
+    {
+      command: "npm run audit",
+      purpose: "Reject known moderate-or-higher dependency vulnerabilities.",
       requiredBefore: "owner-preview",
       requiresLiveSecret: false
     },

@@ -6,6 +6,10 @@ Before preview:
 - `npm run typecheck`
 - `npm run build`
 - `npm run smoke`
+- `npm run auth:smoke`
+- `npm run visual:qa`
+- `npm run audit`
+- `npm run install:proof`
 
 Before production:
 
@@ -17,6 +21,9 @@ Before production:
 - desktop and mobile visually reviewed
 - no sample-only wording remains unless intentionally marked
 - Vercel preview inspected
+- control-center mission create flow inspected and persistence mode understood
+- production Postgres schema and RLS reapplied for v0.2 control tables
+- Railway MCP OIDC, Origin allowlist, health, readiness, and authority tests verified if hosted MCP is enabled
 
 Blocked release examples:
 

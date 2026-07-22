@@ -256,6 +256,177 @@ select {
   font-size: clamp(16px, 1.6vw, 19px);
 }
 
+.control-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  gap: 40px;
+  align-items: end;
+  padding: 56px 0 32px;
+  border-bottom: 1px solid var(--line);
+}
+
+.control-title {
+  max-width: 760px;
+  margin: 0;
+  font-size: 48px;
+  line-height: 1.02;
+  letter-spacing: 0;
+  overflow-wrap: break-word;
+}
+
+.control-posture {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+  border-left: 2px solid var(--teal);
+}
+
+.control-posture strong {
+  font-size: 24px;
+}
+
+.control-posture p,
+.lifecycle-step p,
+.team-row p,
+.score-row p,
+.score-row > span,
+.team-row > span {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border-bottom: 1px solid var(--line);
+}
+
+.metric-strip > div {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 22px 18px;
+  border-right: 1px solid var(--line);
+}
+
+.metric-strip > div:first-child {
+  padding-left: 0;
+}
+
+.metric-strip > div:last-child {
+  border-right: 0;
+}
+
+.metric-strip strong {
+  font-size: 28px;
+}
+
+.control-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.control-grid h2,
+.authority-panel h2 {
+  font-size: 32px;
+}
+
+.authority-panel {
+  padding: 22px 0 22px 24px;
+  border-left: 1px solid var(--line);
+}
+
+.blocked-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.blocked-list span {
+  padding: 7px 9px;
+  border: 1px solid rgba(249, 115, 115, 0.3);
+  border-radius: 4px;
+  color: #ffd0d0;
+  background: rgba(249, 115, 115, 0.07);
+  font-size: 12px;
+}
+
+.mission-receipt {
+  display: grid;
+  gap: 10px;
+  padding: 16px 0 0;
+  border-top: 1px solid rgba(20, 184, 166, 0.35);
+}
+
+.mission-receipt p {
+  margin: 0;
+}
+
+.lifecycle {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.lifecycle-step {
+  min-height: 190px;
+  padding: 20px 16px;
+  border-right: 1px solid var(--line);
+}
+
+.lifecycle-step:last-child {
+  border-right: 0;
+}
+
+.lifecycle-step > span {
+  display: block;
+  margin-bottom: 34px;
+  color: var(--teal);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.lifecycle-step strong {
+  display: block;
+  margin-bottom: 8px;
+}
+
+.table-list,
+.score-list {
+  border-top: 1px solid var(--line);
+}
+
+.team-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 0.7fr) minmax(0, 1.35fr) minmax(160px, 0.95fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.team-row > span,
+.score-row > span {
+  font-size: 13px;
+}
+
+.score-row {
+  display: grid;
+  gap: 6px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.score-row strong {
+  font-size: 14px;
+  color: #d7f7f1;
+}
+
 .section h2 {
   margin: 0 0 16px;
   font-size: clamp(28px, 4vw, 48px);
@@ -423,8 +594,33 @@ select {
 
   .hero,
   .two-col,
-  .grid {
+  .grid,
+  .control-header,
+  .control-grid {
     grid-template-columns: 1fr;
+  }
+
+  .metric-strip,
+  .lifecycle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .metric-strip > div,
+  .lifecycle-step {
+    border-bottom: 1px solid var(--line);
+  }
+
+  .control-posture,
+  .authority-panel {
+    padding-left: 18px;
+  }
+
+  .team-row {
+    grid-template-columns: minmax(130px, 0.7fr) minmax(0, 1.3fr);
+  }
+
+  .team-row > span {
+    grid-column: 2;
   }
 
   .hero {
@@ -506,13 +702,43 @@ select {
   }
 
   .hero h1,
-  .page-title {
+  .page-title,
+  .control-title {
     width: 100%;
     max-width: 100%;
     font-size: 32px;
     line-height: 1;
     word-break: normal;
     overflow-wrap: anywhere;
+  }
+
+  .control-title {
+    font-size: 34px;
+  }
+
+  .metric-strip,
+  .lifecycle,
+  .team-row {
+    grid-template-columns: 1fr;
+  }
+
+  .metric-strip > div,
+  .metric-strip > div:first-child {
+    padding: 16px 0;
+    border-right: 0;
+  }
+
+  .lifecycle-step {
+    min-height: auto;
+    border-right: 0;
+  }
+
+  .lifecycle-step > span {
+    margin-bottom: 16px;
+  }
+
+  .team-row > span {
+    grid-column: auto;
   }
 
   .hero h1 {
