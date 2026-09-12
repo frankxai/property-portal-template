@@ -1,6 +1,6 @@
 {
   "name": "property-portal-template",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Premium Next.js renter portal and owner dashboard for Property Intelligence OS.",
   "license": "MIT",
   "private": true,
@@ -15,7 +15,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs && node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
+    "validate": "node scripts/validate-content.mjs && node scripts/privacy-scan.mjs && node --experimental-strip-types scripts/agent-dry-run.mjs && node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs && npm run investment:smoke && npm run workspace:smoke",
     "privacy": "node scripts/privacy-scan.mjs",
     "agent:dry-run": "node --experimental-strip-types scripts/agent-dry-run.mjs",
     "mcp:smoke": "node --experimental-strip-types scripts/mcp-control-plane-smoke.mjs",
@@ -31,7 +31,10 @@
     "install:proof": "node --experimental-strip-types scripts/install-proof-packet.mjs",
     "db:rls:smoke": "node scripts/postgres-rls-smoke.mjs",
     "visual:qa": "node scripts/visual-qa.mjs",
-    "audit": "npm audit --audit-level=moderate"
+    "audit": "npm audit --audit-level=moderate",
+    "investment:smoke": "node --experimental-strip-types scripts/investment-model-smoke.mjs",
+    "principal:smoke": "node scripts/principal-mcp-smoke.mjs",
+    "workspace:smoke": "node --experimental-strip-types scripts/principal-workspace-smoke.mjs"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",

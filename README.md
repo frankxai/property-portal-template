@@ -7,6 +7,24 @@
 
 Vercel/Next.js template for a premium rental-property website, renter self-service portal, inquiry capture, support intake, owner dashboard, listing draft admin, and owner-controlled agent team.
 
+## Principal owner workspace (v0.3)
+
+The `/` workspace now runs a shared, deterministic investment engine: monthly amortization, scheduled refinancing, annual cash flow, pre-tax IRR/NPV and coordinated portfolio downside. It includes source provenance, document-review status, structured Kleinanzeigen reference intake, an adviser brief and category-specific tenant case drafts.
+
+The public workspace begins with **fictional examples**. Inputs stay in the browser session; export the model JSON to retain it or import an authorized model pack. Editing a sample preserves its example lineage. Owner/admin records retain their existing authentication boundary and are not synchronized into this public workspace.
+
+`/api/mcp` exposes three real, stateless official-SDK tools: `underwrite_property`, `stress_property_portfolio`, and `get_property_review_playbook`. The endpoint only calculates caller-supplied assumptions and returns public review procedures. See [ChatGPT setup](docs/chatgpt-connection.md), [financial methodology](docs/investment-model.md), and [workspace contract](docs/principal-workspace.md).
+
+```bash
+npm run validate
+npm run typecheck
+npm run build
+npm run principal:smoke
+npm run auth:smoke
+```
+
+A Kleinanzeigen reference is not a live account connection. Outbound OpenImmo delivery still requires the provider partnership, issued credentials and an approved test. No scraping, messaging or publication is added.
+
 ## Who This Is For
 
 - property owners who want a premium renter-facing web experience

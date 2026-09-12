@@ -12,7 +12,8 @@ const passcode = `owner-${randomBytes(8).toString("hex")}`;
 const passcodeDigest = createHash("sha256").update(`${passcode}:${signingKey}`).digest("hex");
 const rejectedLegacyBearer = randomBytes(24).toString("base64url");
 
-const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
+console.log(`Starting isolated Next.js auth test server at ${baseUrl}.`);
+const server = spawn(process.execPath, [nextBin, "start", "--hostname", "127.0.0.1", "-p", String(port)], {
   cwd: process.cwd(),
   env: {
     ...process.env,
@@ -32,10 +33,10 @@ const server = spawn(process.execPath, [nextBin, "start", "-p", String(port)], {
 
 let output = "";
 server.stdout.on("data", (chunk) => {
-  output += chunk.toString();
+  output = (output + chunk.toString()).slice(-5_000);
 });
 server.stderr.on("data", (chunk) => {
-  output += chunk.toString();
+  output = (output + chunk.toString()).slice(-5_000);
 });
 
 async function stopServer() {
@@ -45,7 +46,8 @@ async function stopServer() {
   } else {
     server.kill("SIGTERM");
   }
-  await sleep(700);
+  await Promise.race([new Promise((resolve) => server.once("exit", resolve)), sleep(2_000)]);
+  if (server.exitCode === null && !isWindows) server.kill("SIGKILL");
 }
 
 async function waitForServer() {
@@ -54,8 +56,10 @@ async function waitForServer() {
       throw new Error(`next start exited early.\n${output}`);
     }
     try {
-      const response = await fetch(baseUrl, { cache: "no-store" });
-      if (response.ok) return;
+      const response = await fetch(baseUrl, { cache: "no-store", signal: AbortSignal.timeout(1_000) });
+      const ready = response.ok;
+      await response.arrayBuffer();
+      if (ready) return;
     } catch {
       // Keep polling until Next is ready.
     }
@@ -69,7 +73,7 @@ async function expectStatus(path, expectedStatus, init = {}) {
   if (init.method && !["GET", "HEAD", "OPTIONS"].includes(init.method.toUpperCase())) {
     headers.set("origin", baseUrl);
   }
-  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", cache: "no-store", ...init, headers });
+  const response = await fetch(`${baseUrl}${path}`, { redirect: "manual", cache: "no-store", ...init, headers, signal: AbortSignal.timeout(10_000) });
   if (response.status !== expectedStatus) {
     throw new Error(`${path} returned ${response.status}; expected ${expectedStatus}`);
   }
@@ -78,6 +82,7 @@ async function expectStatus(path, expectedStatus, init = {}) {
 
 try {
   await waitForServer();
+  console.log("Auth endpoint ready; checking public pages and unauthenticated boundaries.");
 
   await expectStatus("/properties/urban-haven-sample", 200);
   await expectStatus("/api/auth/sign-in/oauth2", 404, {
@@ -139,11 +144,13 @@ try {
     })
   });
 
+  console.log("Checking owner sign-in, protected access and sign-out.");
   const signIn = await fetch(`${baseUrl}/api/auth/owner/sign-in`, {
     method: "POST",
     redirect: "manual",
     headers: { origin: baseUrl },
-    body: new URLSearchParams({ passcode, next: "/owner" })
+    body: new URLSearchParams({ passcode, next: "/owner" }),
+    signal: AbortSignal.timeout(10_000)
   });
   if (signIn.status !== 303) {
     throw new Error(`/api/auth/owner/sign-in returned ${signIn.status}; expected 303`);

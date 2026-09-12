@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export function SiteNav() {
+  const pathname = usePathname();
+  if (pathname === "/") return null;
   return (
     <header className="nav">
       <Link className="brand" href="/">
