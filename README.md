@@ -151,7 +151,7 @@ The protected `/admin/ops` workflow records one review per organization and UTC 
 
 Deploy as a normal Next.js project or use the deploy button above after the repository is public. Use preview deployments for owner review before production.
 
-The v0.2 baseline uses Next.js 16.2.11 and React 19.2.8. `sharp` is pinned to the patched 0.35.3 line through an npm override until the framework dependency resolves there by default.
+The v0.3 release uses Next.js 16.3.5 and React 19.2.8. `sharp` and `postcss` are pinned to patched versions through npm overrides. Run the dependency audit in CI before deploying; the inherited v0.2 dependency lock is superseded by this release.
 
 ## v0 Path
 
