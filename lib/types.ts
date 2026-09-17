@@ -125,7 +125,7 @@ export type AgentRun = {
 export type SetupStep = {
   id: string;
   title: string;
-  status: "ready" | "needs-owner" | "recommended" | "later";
+  status: "ready" | "needs-owner" | "configure" | "recommended" | "later";
   outcome: string;
 };
 

@@ -22,7 +22,8 @@ create table if not exists organization_members (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   check ((identity_issuer is null) = (identity_subject is null)),
-  unique (organization_id, email)
+  unique (organization_id, email),
+  constraint organization_members_id_organization_unique unique (id, organization_id)
 );
 
 create unique index if not exists organization_members_identity_idx
@@ -170,7 +171,8 @@ create table if not exists properties (
   private_owner_notes jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (organization_id, slug)
+  unique (organization_id, slug),
+  constraint properties_id_organization_unique unique (id, organization_id)
 );
 
 create table if not exists units (
@@ -183,8 +185,38 @@ create table if not exists units (
   public_pricing jsonb not null default '{}'::jsonb,
   private_pricing jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint units_id_property_unique unique (id, property_id)
 );
+
+create table if not exists renter_access_grants (
+  id text primary key,
+  organization_id text not null references organizations(id) on delete cascade,
+  property_id text not null,
+  unit_id text,
+  rental_label text check (rental_label is null or length(rental_label) between 1 and 160),
+  code_hash text not null unique check (code_hash ~ '^[0-9a-f]{64}$'),
+  expires_at timestamptz not null,
+  revoked_at timestamptz,
+  revoked_by text,
+  created_by text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint renter_access_grants_property_tenant_fk
+    foreign key (property_id, organization_id)
+    references properties(id, organization_id) on delete cascade,
+  constraint renter_access_grants_unit_property_fk
+    foreign key (unit_id, property_id)
+    references units(id, property_id) on delete cascade,
+  check (expires_at > created_at),
+  check ((revoked_at is null) = (revoked_by is null))
+);
+
+create index if not exists renter_access_grants_org_property_idx
+  on renter_access_grants (organization_id, property_id, created_at desc);
+create index if not exists renter_access_grants_active_expiry_idx
+  on renter_access_grants (organization_id, expires_at)
+  where revoked_at is null;
 
 create table if not exists knowledge_articles (
   id text primary key,
@@ -244,6 +276,88 @@ create table if not exists support_tickets (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+create table if not exists owner_inbox_work_items (
+  organization_id text not null references organizations(id) on delete cascade,
+  source_type text not null check (source_type in ('inquiry', 'support')),
+  source_id text not null,
+  status text not null default 'new' check (status in ('new', 'triage', 'in-progress', 'waiting-owner', 'resolved', 'closed')),
+  assignee_member_id text,
+  due_at timestamptz,
+  draft_reply text not null default '' check (length(draft_reply) <= 8000),
+  draft_approval_state text not null default 'none' check (draft_approval_state in ('none', 'draft', 'pending', 'approved', 'changes-requested')),
+  version integer not null default 1 check (version > 0),
+  updated_by text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  primary key (organization_id, source_type, source_id),
+  constraint owner_inbox_assignee_tenant_fk
+    foreign key (assignee_member_id, organization_id)
+    references organization_members(id, organization_id) on delete restrict
+);
+
+create table if not exists owner_inbox_events (
+  id text primary key,
+  organization_id text not null references organizations(id) on delete cascade,
+  source_type text not null check (source_type in ('inquiry', 'support')),
+  source_id text not null,
+  actor_id text not null,
+  actor_role text not null check (actor_role in ('owner', 'agency-admin', 'manager')),
+  event_type text not null check (event_type in ('triaged', 'assigned', 'due-date-set', 'draft-updated', 'approval-updated', 'status-changed', 'updated')),
+  from_status text check (from_status is null or from_status in ('new', 'triage', 'in-progress', 'waiting-owner', 'resolved', 'closed')),
+  to_status text check (to_status is null or to_status in ('new', 'triage', 'in-progress', 'waiting-owner', 'resolved', 'closed')),
+  version integer not null check (version > 0),
+  metadata jsonb not null default '{}'::jsonb,
+  occurred_at timestamptz not null default now()
+);
+
+create index if not exists owner_inbox_work_queue_idx
+  on owner_inbox_work_items (organization_id, status, due_at, updated_at desc);
+create index if not exists owner_inbox_events_timeline_idx
+  on owner_inbox_events (organization_id, source_type, source_id, occurred_at desc);
+
+create or replace function property_os_owner_inbox_events_append_only()
+returns trigger
+language plpgsql
+as $$
+begin
+  raise exception 'owner_inbox_events is append-only';
+end $$;
+
+create or replace function property_os_owner_inbox_source_belongs_to_tenant()
+returns trigger
+language plpgsql
+as $$
+begin
+  if new.source_type = 'inquiry' and not exists (
+    select 1 from inquiries
+    where id = new.source_id and organization_id = new.organization_id
+  ) then
+    raise exception 'Owner inbox inquiry source does not belong to organization';
+  end if;
+  if new.source_type = 'support' and not exists (
+    select 1 from support_tickets
+    where id = new.source_id and organization_id = new.organization_id
+  ) then
+    raise exception 'Owner inbox support source does not belong to organization';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists owner_inbox_events_append_only on owner_inbox_events;
+create trigger owner_inbox_events_append_only
+before update or delete on owner_inbox_events
+for each row execute function property_os_owner_inbox_events_append_only();
+
+drop trigger if exists owner_inbox_work_item_source_tenant on owner_inbox_work_items;
+create trigger owner_inbox_work_item_source_tenant
+before insert or update on owner_inbox_work_items
+for each row execute function property_os_owner_inbox_source_belongs_to_tenant();
+
+drop trigger if exists owner_inbox_event_source_tenant on owner_inbox_events;
+create trigger owner_inbox_event_source_tenant
+before insert on owner_inbox_events
+for each row execute function property_os_owner_inbox_source_belongs_to_tenant();
 
 create table if not exists notification_deliveries (
   id text primary key,
@@ -448,3 +562,7 @@ create table if not exists audit_events (
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now()
 );
+
+create index if not exists audit_events_renter_access_idx
+  on audit_events (organization_id, subject_id, created_at desc)
+  where subject_type = 'renter_access_grant';

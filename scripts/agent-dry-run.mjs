@@ -28,8 +28,12 @@ if (!integrations.some((integration) => integration.id === "estatesync" && integ
   throw new Error("EstateSync integration registry entry is missing.");
 }
 
-if (!setupSteps.some((step) => step.id === "runtime-storage" && step.status === "recommended")) {
-  throw new Error("Runtime storage setup step is missing.");
+if (!setupSteps.some((step) => (
+  step.id === "runtime-storage"
+  && step.status === "configure"
+  && /fail closed/i.test(step.outcome)
+))) {
+  throw new Error("Fail-closed runtime storage setup requirement is missing.");
 }
 
 if (sampleAgentRuns.some((run) => run.approvalRisk === "low" && run.ownerAction.toLowerCase().includes("publish"))) {

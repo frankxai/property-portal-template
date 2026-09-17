@@ -27,10 +27,13 @@ alter table organizations enable row level security;
 alter table organization_members enable row level security;
 alter table properties enable row level security;
 alter table units enable row level security;
+alter table renter_access_grants enable row level security;
 alter table knowledge_articles enable row level security;
 alter table listing_drafts enable row level security;
 alter table inquiries enable row level security;
 alter table support_tickets enable row level security;
+alter table owner_inbox_work_items enable row level security;
+alter table owner_inbox_events enable row level security;
 alter table notification_deliveries enable row level security;
 alter table notification_events enable row level security;
 alter table weekly_owner_reviews enable row level security;
@@ -48,10 +51,13 @@ alter table organizations force row level security;
 alter table organization_members force row level security;
 alter table properties force row level security;
 alter table units force row level security;
+alter table renter_access_grants force row level security;
 alter table knowledge_articles force row level security;
 alter table listing_drafts force row level security;
 alter table inquiries force row level security;
 alter table support_tickets force row level security;
+alter table owner_inbox_work_items force row level security;
+alter table owner_inbox_events force row level security;
 alter table notification_deliveries force row level security;
 alter table notification_events force row level security;
 alter table weekly_owner_reviews force row level security;
@@ -83,6 +89,15 @@ create policy properties_tenant_isolation on properties
   using (organization_id = property_os_current_organization_id())
   with check (organization_id = property_os_current_organization_id());
 
+drop policy if exists renter_access_grants_tenant_isolation on renter_access_grants;
+create policy renter_access_grants_tenant_isolation on renter_access_grants
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (
+    organization_id = property_os_current_organization_id()
+    and property_os_property_in_current_org(property_id)
+  );
+
 drop policy if exists inquiries_tenant_isolation on inquiries;
 create policy inquiries_tenant_isolation on inquiries
   for all
@@ -93,6 +108,22 @@ drop policy if exists support_tickets_tenant_isolation on support_tickets;
 create policy support_tickets_tenant_isolation on support_tickets
   for all
   using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists owner_inbox_work_items_tenant_isolation on owner_inbox_work_items;
+create policy owner_inbox_work_items_tenant_isolation on owner_inbox_work_items
+  for all
+  using (organization_id = property_os_current_organization_id())
+  with check (organization_id = property_os_current_organization_id());
+
+drop policy if exists owner_inbox_events_tenant_select on owner_inbox_events;
+create policy owner_inbox_events_tenant_select on owner_inbox_events
+  for select
+  using (organization_id = property_os_current_organization_id());
+
+drop policy if exists owner_inbox_events_tenant_insert on owner_inbox_events;
+create policy owner_inbox_events_tenant_insert on owner_inbox_events
+  for insert
   with check (organization_id = property_os_current_organization_id());
 
 drop policy if exists notification_deliveries_tenant_isolation on notification_deliveries;

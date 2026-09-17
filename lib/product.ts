@@ -11,7 +11,7 @@ export const setupSteps: SetupStep[] = [
     id: "renter-portal",
     title: "Renter portal knowledge",
     status: "ready",
-    outcome: "Common questions are answered from approved articles; access secrets stay out of the repo."
+    outcome: "Common questions are answered from approved articles; production access uses expiring, revocable, hash-only grants."
   },
   {
     id: "listing-studio",
@@ -21,9 +21,15 @@ export const setupSteps: SetupStep[] = [
   },
   {
     id: "runtime-storage",
-    title: "Secure runtime storage",
-    status: "recommended",
-    outcome: "Inquiries, support tickets, documents, and approvals move from demo mode into Postgres plus object storage."
+    title: "Production runtime storage",
+    status: "configure",
+    outcome: "Production intake, owner workflows, renter grants, notifications, and audit require tenant-scoped Postgres and fail closed when it is unavailable."
+  },
+  {
+    id: "renter-access",
+    title: "Secure renter access",
+    status: "ready",
+    outcome: "Opaque codes are returned once, stored only as hashes, bound to tenant/property, and expire or revoke without exposing access secrets in Git."
   },
   {
     id: "channel-apis",

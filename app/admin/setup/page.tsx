@@ -8,6 +8,7 @@ import { createInstallProofPacket, type InstallProofStatus } from "@/lib/install
 const toneByStatus = {
   ready: undefined,
   "needs-owner": "warning",
+  configure: "warning",
   recommended: "warning",
   later: "warning"
 } as const;

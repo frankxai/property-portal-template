@@ -34,9 +34,9 @@ export const implementationLayers: ImplementationLayer[] = [
     title: "Secure runtime data layer",
     status: runtimeHealth().mode === "database-ready" ? "configure" : "planned",
     ownerValue: "Real inquiries, support tickets, approvals, and agent runs can be stored without leaking private data into GitHub.",
-    implementerAction: "Apply db/schema.sql to Postgres, seed organization/property records, add auth, retention, backups, and row-level access rules.",
-    evidence: ["db/schema.sql", "/api/runtime/health", "/api/runtime/snapshot", "/admin/runtime"],
-    productionGate: "DATABASE_URL, auth policy, audit retention, and deletion workflow are verified in the target environment."
+    implementerAction: "Apply the ordered portal migrations and forced RLS with a non-bypass runtime role, seed the approved tenant, then prove connectivity, isolation, retention, backup, restore, and deletion in the target environment.",
+    evidence: ["db/schema.sql", "db/rls.sql", "db/005-renter-access.sql", "/api/runtime/health", "/admin/runtime"],
+    productionGate: "DATABASE_URL, schema version, live RLS, renter access expiry/revocation, audit retention, backup restore, and deletion evidence are verified in the target environment."
   },
   {
     id: "agent-swarm",

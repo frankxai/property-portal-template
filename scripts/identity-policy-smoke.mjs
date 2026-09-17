@@ -44,6 +44,8 @@ for (const [reason, profile] of [
 assert.equal(ownerRoleHasCapability("owner", "identity:revoke"), true);
 assert.equal(ownerRoleHasCapability("agency-admin", "approvals:decide"), true);
 assert.equal(ownerRoleHasCapability("manager", "operations:write"), true);
+assert.equal(ownerRoleHasCapability("manager", "renter-access:create"), true);
+assert.equal(ownerRoleHasCapability("manager", "renter-access:revoke"), false);
 assert.equal(ownerRoleHasCapability("manager", "approvals:decide"), false);
 assert.equal(ownerRoleHasCapability("manager", "identity:revoke"), false);
 

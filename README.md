@@ -24,6 +24,7 @@ This is the portal half of Property Intelligence OS. Pair it with `property-os-t
 - `/stay/[accessCode]`: renter self-service portal
 - `/support`: support and maintenance intake
 - `/owner`: owner dashboard
+- `/admin/inbox`: tenant-scoped inquiry and support triage, assignment, due dates, internal drafts, and append-only audit
 - `/admin/setup`: owner setup checklist and missing-fact workflow
 - `/admin/implementation`: installation readiness, agent architecture, production gates, and partner offer ladder
 - `/admin/runtime`: runtime storage, notification, capability, and queue posture
@@ -48,6 +49,7 @@ npm run auth:smoke
 npm run identity:smoke
 npm run notification:smoke
 npm run weekly:smoke
+npm run inbox:smoke
 npm run weekly:visual
 npm run visual:qa
 npm run audit
@@ -81,7 +83,7 @@ Production database order for a fresh install:
 4. Set `PROPERTY_OS_ORG_ID` to the seeded organization id.
 5. Verify `/admin/runtime` in the deployed preview before real renter data.
 
-Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql`, `db/003-weekly-owner-review.sql`, and the transactional `db/004-tenant-oidc.sql` in order, then rerun `db/rls.sql` and the live database smokes before enabling production workflows.
+Existing v0.2 portal databases apply `db/002-notification-lifecycle.sql`, `db/003-weekly-owner-review.sql`, `db/004-tenant-oidc.sql`, `db/005-renter-access.sql`, and `db/006-owner-inbox.sql` in order, then rerun `db/rls.sql` and the live database smokes before enabling production workflows.
 
 ## Owner Identity
 
@@ -122,6 +124,10 @@ Notifications use a durable tenant-scoped outbox and append-only event ledger. A
 
 The protected `/admin/ops` workflow records one review per organization and UTC week, derives review duration and urgent acknowledgement from server evidence, accepts bounded FAQ and vacancy inputs, and stores five explicit `met`, `not-met`, or `unmeasured` observations. Completion is idempotent and performs no external action. See `docs/weekly-owner-review.md`.
 
+## Owner Inbox
+
+The protected `/admin/inbox` route unifies existing inquiry and support intake into a tenant-scoped owner queue without changing intake writes. Sanitized list responses exclude requester email and private messages; authorized detail responses are private and never cached. Triage updates are row-locked, version-checked, append-only audited, and restricted by dedicated read/write/close capabilities. Reply drafts and approvals remain internal and every response receipts zero external actions. See `docs/owner-inbox.md`.
+
 ## V1 Safety
 
 - Static portal answers approved facts.
@@ -150,6 +156,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 - `docs/agent-control-center-spec.md`
 - `docs/agent-workbench-spec.md`
 - `docs/weekly-owner-review.md`
+- `docs/owner-inbox.md`
 - `docs/product-roadmap.md`
 - `docs/production-hardening.md`
 - `docs/v0-implementation-brief.md`
