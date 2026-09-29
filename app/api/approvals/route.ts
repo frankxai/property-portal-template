@@ -15,7 +15,7 @@ const allowedKinds: ApprovalKind[] = [
 ];
 
 export async function POST(request: Request) {
-  const denied = await requireOwnerApiAccess(request);
+  const denied = await requireOwnerApiAccess(request, "operations:write");
   if (denied) return denied;
 
   const input = await request.json() as Partial<{

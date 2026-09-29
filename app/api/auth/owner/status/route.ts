@@ -11,7 +11,9 @@ export async function GET() {
       mode: access.status.mode,
       configured: access.status.configured,
       productionSafe: access.status.productionSafe,
+      scope: access.status.scope,
       missingEnv: access.status.missingEnv,
+      invalidEnv: access.status.invalidEnv,
       detail: access.status.detail
     }
   });

@@ -12,11 +12,7 @@
 
 ## Readiness API
 
-Use an owner session or trusted automation token:
-
-```bash
-curl -H "Authorization: Bearer $OWNER_PORTAL_API_TOKEN" /api/implementation/readiness
-```
+Use an authenticated owner browser session. The portal does not expose a global owner automation bearer; local automation uses `npm run install:proof`, and agent automation crosses the governed MCP boundary.
 
 The response includes:
 
@@ -32,7 +28,6 @@ The response includes:
 Use `/api/install/proof-packet` when the handoff needs an auditable owner or partner proof packet. It includes install phases, command checks, owner approval requirements, blocked v1 actions, runtime posture, and public safety boundaries.
 
 ```bash
-curl -H "Authorization: Bearer $OWNER_PORTAL_API_TOKEN" /api/install/proof-packet
 npm run install:proof
 ```
 
@@ -44,7 +39,7 @@ An implementation partner should not sell the public template as production-read
 
 1. approved property facts, media rights, and public address policy
 2. Vercel preview verification on desktop and mobile
-3. secure database, owner auth, backups, RLS smoke evidence, and retention policy
+3. secure database, explicit owner auth mode, identity/RLS smoke evidence, backups, and retention policy
 4. owner notification route for urgent and approval-required items
 5. private client workspace for sensitive property/renter operations
 6. Codex/Claude/MCP setup with approved-facts-only boundaries

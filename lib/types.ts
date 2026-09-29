@@ -22,7 +22,10 @@ export type AgentRole =
   | "renter-guide"
   | "maintenance-triage"
   | "vacancy-pipeline"
-  | "compliance-reviewer";
+  | "renovation-planner"
+  | "compliance-reviewer"
+  | "visual-qa"
+  | "implementation-lead";
 
 export type PropertyProfile = {
   id: string;
@@ -122,7 +125,7 @@ export type AgentRun = {
 export type SetupStep = {
   id: string;
   title: string;
-  status: "ready" | "needs-owner" | "recommended" | "later";
+  status: "ready" | "needs-owner" | "configure" | "recommended" | "later";
   outcome: string;
 };
 

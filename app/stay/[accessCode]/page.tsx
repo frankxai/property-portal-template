@@ -1,45 +1,54 @@
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
-import { getProperty, getStaySession, staySessions } from "@/data/properties";
 import { StatusBadge } from "@/components/StatusBadge";
+import { resolveRenterStay } from "@/lib/renter-access";
 
-export function generateStaticParams() {
-  return staySessions.map((session) => ({ accessCode: session.accessCode }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function StayPage({ params }: { params: Promise<{ accessCode: string }> }) {
   const { accessCode } = await params;
-  const session = getStaySession(accessCode);
-  if (!session) notFound();
-  const property = getProperty(session.propertySlug);
-  if (!property) notFound();
+  const requestHeaders = await headers();
+  const requestIdentifier = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim()
+    || requestHeaders.get("x-real-ip")
+    || "unknown";
+  const stay = await resolveRenterStay(accessCode, { requestIdentifier });
+  if (!stay) notFound();
 
   return (
     <main className="page">
       <div className="shell">
         <section className="section stack">
           <div className="row">
-            <span className="eyebrow">{session.label}</span>
-            <StatusBadge>{session.status}</StatusBadge>
+            <span className="eyebrow">{stay.rentalLabel || "Renter portal"}</span>
+            <StatusBadge>{stay.demo ? "demo" : "active"}</StatusBadge>
           </div>
-          <h1 className="page-title">{property.name} renter portal</h1>
+          <h1 className="page-title">{stay.propertyName} renter portal</h1>
           <p className="lede">
             Approved self-service information for the rental period. Private access details stay in the owner-approved private channel.
           </p>
+          {stay.expiresAt ? (
+            <p className="muted">Portal access expires {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(new Date(stay.expiresAt))}.</p>
+          ) : null}
         </section>
 
         <section className="grid">
-          {session.sections.map((section) => (
+          {stay.sections.map((section) => (
             <article className="question-card" key={section.id}>
               <div className="row">
                 <h3>{section.title}</h3>
-                <StatusBadge>{section.approvalStatus}</StatusBadge>
+                <StatusBadge>approved</StatusBadge>
               </div>
               <p className="muted">{section.answer}</p>
             </article>
           ))}
+          {stay.sections.length === 0 ? (
+            <article className="question-card">
+              <h3>No approved guidance yet</h3>
+              <p className="muted">Contact the owner through the approved private channel.</p>
+            </article>
+          ) : null}
         </section>
       </div>
     </main>
   );
 }
-

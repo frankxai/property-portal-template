@@ -21,6 +21,7 @@ export default async function RuntimePage() {
             <Link className="button" href="/api/runtime/snapshot">Runtime JSON</Link>
             <Link className="button-secondary" href="/admin/implementation">Implementation cockpit</Link>
             <Link className="button-secondary" href="/admin/agent-runs">Agent ledger</Link>
+            <Link className="button-secondary" href="/admin/notifications">Notification ledger</Link>
           </div>
         </section>
 
@@ -73,6 +74,19 @@ export default async function RuntimePage() {
           <h2>Operational queue shape</h2>
           <div className="grid">
             {Object.entries(snapshot.counts).map(([name, count]) => (
+              <div className="metric" key={name}>
+                <span className="label">{name}</span>
+                <strong>{count}</strong>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="section stack">
+          <span className="eyebrow">Notification evidence</span>
+          <h2>Delivery and acknowledgement</h2>
+          <div className="grid">
+            {Object.entries(snapshot.notificationSummary).map(([name, count]) => (
               <div className="metric" key={name}>
                 <span className="label">{name}</span>
                 <strong>{count}</strong>

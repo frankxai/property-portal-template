@@ -17,6 +17,13 @@ export async function POST(request: Request) {
   }
 
   const ownerApprovalRequired = true;
-  const result = await recordSupport(payload, ownerApprovalRequired);
-  return NextResponse.json(result);
+  try {
+    const result = await recordSupport(payload, ownerApprovalRequired);
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json(
+      { error: "Support intake is temporarily unavailable. No request was accepted. Use the displayed urgent route when safety is at risk." },
+      { status: 503 }
+    );
+  }
 }

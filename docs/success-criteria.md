@@ -15,6 +15,7 @@
 - sees the automation boundary
 - can review support and inquiry flow
 - can use the ops page as a weekly rhythm
+- can queue one bounded specialist mission and inspect authority, persistence, notification, and audit proof
 - does not need to edit code for every content change once wired to the owner workspace
 
 ## Template
@@ -24,3 +25,5 @@
 - runs with sample data
 - makes manual v1 boundaries explicit
 - can be installed for another owner without brother-specific data
+- exposes measurable owner, renter, vacancy, support, partner, and safety targets
+- records no consequential external action without exact server-side authority
