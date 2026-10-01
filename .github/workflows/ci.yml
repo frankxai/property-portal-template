@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    branches: [main, codex/property-portal-v020-control-center]
 
 concurrency:
   group: property-portal-template-ci-${{ github.ref }}
@@ -25,12 +25,23 @@ jobs:
         run: npm run validate
       - name: Type check
         run: npm run typecheck
+      - name: Audit dependencies
+        run: npm run audit
       - name: Build
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         run: npm run build
       - name: Smoke
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         run: npm run smoke
+      - name: Principal MCP protocol smoke
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        run: npm run principal:smoke
       - name: Auth boundary smoke
         if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
         run: npm run auth:smoke
+      - name: Notification lifecycle smoke
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        run: npm run notification:smoke
+      - name: Weekly owner review smoke
+        if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+        run: npm run weekly:smoke

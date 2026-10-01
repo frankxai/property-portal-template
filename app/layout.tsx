@@ -3,8 +3,8 @@ import "./globals.css";
 import { SiteNav } from "@/components/SiteNav";
 
 export const metadata: Metadata = {
-  title: "Property Intelligence OS",
-  description: "Premium renter portal and owner operating system template."
+  title: "Property Intelligence · Owner Workspace",
+  description: "Portfolioanalyse, Finanzierungsszenarien, Belegprüfung und ChatGPT-Werkzeuge für Immobilienentscheidungen."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
@@ -17,4 +17,3 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
     </html>
   );
 }
-

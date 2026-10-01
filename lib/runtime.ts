@@ -1,7 +1,7 @@
 import type { InquiryPayload, SupportPayload } from "@/lib/types";
 import { classifySupport } from "@/lib/product";
 import { notifyOwner, type OwnerNotificationReceipt } from "@/lib/owner-notifications";
-import { persistApproval, persistInquiry, persistSupport, type RuntimePersistenceReceipt } from "@/lib/runtime-store";
+import { persistInquiryIntake, persistSupportIntake, type RuntimePersistenceReceipt } from "@/lib/runtime-store";
 import { blockedV1Actions, createApprovalRecord, createAuditEvent, createRuntimeId, runtimeHealth } from "@/lib/runtime-contracts";
 
 export type RuntimeResult = {
@@ -48,8 +48,16 @@ export async function recordInquiry(payload: InquiryPayload, ownerApprovalRequir
     ownerApprovalRequired,
     createdAt: auditEvent.createdAt
   };
-  const persistence = await persistInquiry({ payload, item, auditEvent });
-  const approvalPersistence = await persistApproval({ approval, auditEvent: approvalAuditEvent });
+  const { persistence, approvalPersistence } = await persistInquiryIntake({
+    payload,
+    item,
+    auditEvent,
+    approval,
+    approvalAuditEvent
+  });
+  if (persistence.status !== "recorded" || approvalPersistence.status !== "recorded") {
+    throw new Error("Durable inquiry intake is unavailable.");
+  }
   const ownerNotification = await notifyOwner({
     sourceId: id,
     kind: "inquiry",
@@ -103,8 +111,16 @@ export async function recordSupport(payload: SupportPayload, ownerApprovalRequir
     ownerApprovalRequired: ownerApprovalRequired || classification.ownerApprovalRequired,
     createdAt: auditEvent.createdAt
   };
-  const persistence = await persistSupport({ payload, item, auditEvent });
-  const approvalPersistence = await persistApproval({ approval, auditEvent: approvalAuditEvent });
+  const { persistence, approvalPersistence } = await persistSupportIntake({
+    payload,
+    item,
+    auditEvent,
+    approval,
+    approvalAuditEvent
+  });
+  if (persistence.status !== "recorded" || approvalPersistence.status !== "recorded") {
+    throw new Error("Durable support intake is unavailable.");
+  }
   const ownerNotification = await notifyOwner({
     sourceId: id,
     kind: "support",

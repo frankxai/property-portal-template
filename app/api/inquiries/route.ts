@@ -18,6 +18,13 @@ export async function POST(request: Request) {
   }
 
   const ownerApprovalRequired = true;
-  const result = await recordInquiry(payload, ownerApprovalRequired);
-  return NextResponse.json(result);
+  try {
+    const result = await recordInquiry(payload, ownerApprovalRequired);
+    return NextResponse.json(result);
+  } catch {
+    return NextResponse.json(
+      { error: "Inquiry intake is temporarily unavailable. No request was accepted." },
+      { status: 503 }
+    );
+  }
 }
