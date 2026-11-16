@@ -265,8 +265,8 @@ function createOidcAuth() {
       window: 60,
       max: 30,
       customRules: {
-        "/sign-in/oauth2": { window: 60, max: 10 },
-        "/oauth2/callback/:providerId": { window: 60, max: 20 }
+        "/sign-in/social": { window: 60, max: 10 },
+        "/callback/:providerId": { window: 60, max: 20 }
       }
     },
     telemetry: { enabled: false },
@@ -278,8 +278,7 @@ function createOidcAuth() {
           clientSecret: config.clientSecret,
           authorizationUrl: config.authorizationUrl,
           tokenUrl: config.tokenUrl,
-          issuer: config.issuer,
-          requireIssuerValidation: true,
+          // Pinned issuer/audience/JWKS verification remains mandatory in verifiedOidcUser.
           responseType: "code",
           scopes: ["openid", "profile", "email"],
           pkce: true,

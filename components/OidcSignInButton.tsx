@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { createAuthClient } from "better-auth/react";
-import { genericOAuthClient } from "better-auth/client/plugins";
 
-const authClient = createAuthClient({ plugins: [genericOAuthClient()] });
+const authClient = createAuthClient();
 
 export function OidcSignInButton({ providerId, nextPath }: { providerId: string; nextPath: string }) {
   const [pending, setPending] = useState(false);
@@ -13,8 +12,8 @@ export function OidcSignInButton({ providerId, nextPath }: { providerId: string;
   async function signIn() {
     setPending(true);
     setFailed(false);
-    const result = await authClient.signIn.oauth2({
-      providerId,
+    const result = await authClient.signIn.social({
+      provider: providerId,
       callbackURL: nextPath,
       errorCallbackURL: "/admin/sign-in?error=oidc",
       // Better Auth may create its protocol user only after the server verifies a pre-bound local membership.

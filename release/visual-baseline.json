@@ -1,0 +1,194 @@
+{
+  "schemaVersion": "1.0.0",
+  "purpose": "Technical regression reference; publication approval remains separate",
+  "sourceRun": "https://github.com/frankxai/property-portal-template/actions/runs/43782488587",
+  "review": "Real rendered source inspected; no product publication approval",
+  "records": [
+    {
+      "route": "/",
+      "revision": "b17fa63be845cfb345d1419e6c09a7346cc5a1d6",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "dpr": 1,
+      "sha256": "be8c52f28242bfb87111d7dcea0be7fbf0eafb33cb25cc21c9d8cfeda402bda2",
+      "bytes": 138475,
+      "mime": "image/png",
+      "fonts": [
+        {
+          "tag": "BODY",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400"
+        },
+        {
+          "tag": "H1",
+          "fontFamily": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "29px",
+          "fontWeight": "550"
+        }
+      ],
+      "a11y": "passed",
+      "visualRegression": "capture-only-no-approved-baseline",
+      "pixelSha256": "4b0eea544e58511ef77ad7da9720736434201501d82a54f5a57ba793a47dfd52",
+      "imageWidth": 320,
+      "imageHeight": 2322
+    },
+    {
+      "route": "/admin/sign-in",
+      "revision": "b17fa63be845cfb345d1419e6c09a7346cc5a1d6",
+      "viewport": {
+        "width": 320,
+        "height": 844
+      },
+      "dpr": 1,
+      "sha256": "b8bc2d7e0e6ce6f979176059dc638d18857c7af60547fbe13723e0c30816eb8e",
+      "bytes": 129090,
+      "mime": "image/png",
+      "fonts": [
+        {
+          "tag": "BODY",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400"
+        },
+        {
+          "tag": "H1",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "36px",
+          "fontWeight": "700"
+        }
+      ],
+      "a11y": "passed",
+      "visualRegression": "capture-only-no-approved-baseline",
+      "pixelSha256": "6840a9d13de690495c207c6fce6289c66dae9609085fa4327ee3c3b102dfbf1a",
+      "imageWidth": 320,
+      "imageHeight": 1169
+    },
+    {
+      "route": "/",
+      "revision": "b17fa63be845cfb345d1419e6c09a7346cc5a1d6",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "dpr": 1,
+      "sha256": "4b870a59531d0952a13572f6d1acdf04dfffdd2fa1d6b9513e144a6e1ce70bea",
+      "bytes": 177524,
+      "mime": "image/png",
+      "fonts": [
+        {
+          "tag": "BODY",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400"
+        },
+        {
+          "tag": "H1",
+          "fontFamily": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "35.84px",
+          "fontWeight": "550"
+        }
+      ],
+      "a11y": "passed",
+      "visualRegression": "capture-only-no-approved-baseline",
+      "pixelSha256": "89bbc1492a642c699ab5c2e2eb90e38b5c0b286348a9787cada99caf3f59c3b3",
+      "imageWidth": 1280,
+      "imageHeight": 1337
+    },
+    {
+      "route": "/admin/sign-in",
+      "revision": "b17fa63be845cfb345d1419e6c09a7346cc5a1d6",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "dpr": 1,
+      "sha256": "25500c9d54cdfd45e5b78f1145963d75a5ed7971fd74581767760eed1a54bc1a",
+      "bytes": 316682,
+      "mime": "image/png",
+      "fonts": [
+        {
+          "tag": "BODY",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400"
+        },
+        {
+          "tag": "H1",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "64px",
+          "fontWeight": "700"
+        }
+      ],
+      "a11y": "passed",
+      "visualRegression": "capture-only-no-approved-baseline",
+      "pixelSha256": "12cc774b137c67ae0114fce919130905bde3519fcfbf7d2d0f21a91a4c6096e6",
+      "imageWidth": 1280,
+      "imageHeight": 1007
+    },
+    {
+      "route": "/",
+      "revision": "b17fa63be845cfb345d1419e6c09a7346cc5a1d6",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dpr": 1,
+      "sha256": "b6564699c0229a5b0afe3ec0f5fc67311e16053da14b9405bda2a0f08e9f32fe",
+      "bytes": 142827,
+      "mime": "image/png",
+      "fonts": [
+        {
+          "tag": "BODY",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400"
+        },
+        {
+          "tag": "H1",
+          "fontFamily": "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "29px",
+          "fontWeight": "550"
+        }
+      ],
+      "a11y": "passed",
+      "visualRegression": "capture-only-no-approved-baseline",
+      "pixelSha256": "8251e87ffcf6d53e4adbf45493ce8be7c0c8b3f0bea7836d06b4c00fc93fdeed",
+      "imageWidth": 390,
+      "imageHeight": 2030
+    },
+    {
+      "route": "/admin/sign-in",
+      "revision": "b17fa63be845cfb345d1419e6c09a7346cc5a1d6",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "dpr": 1,
+      "sha256": "a44e27e30439daa3f683d962fb6d2ebf2b6d8ca306d6a1c6f101979dbdfc491e",
+      "bytes": 125628,
+      "mime": "image/png",
+      "fonts": [
+        {
+          "tag": "BODY",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400"
+        },
+        {
+          "tag": "H1",
+          "fontFamily": "Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          "fontSize": "36px",
+          "fontWeight": "700"
+        }
+      ],
+      "a11y": "passed",
+      "visualRegression": "capture-only-no-approved-baseline",
+      "pixelSha256": "6eb9ecd2edf014f633213c98a151be87ff8d1ada9c6a7cb0e2ddd405873ba0ae",
+      "imageWidth": 390,
+      "imageHeight": 1048
+    }
+  ]
+}

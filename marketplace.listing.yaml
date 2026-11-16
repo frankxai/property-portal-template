@@ -1,0 +1,9 @@
+schema_version: "1.0.0"
+product_id: product_property_portal_template
+title: Property Portal Template
+state: draft
+license: MIT_for_repository
+price_state: unchanged
+channels: [github, vercel_templates, gumroad]
+submission: not_performed
+rights_record: release/rights.json

@@ -178,3 +178,7 @@ Use `docs/v0-implementation-brief.md` as the v0 prompt brief for remixing the in
 ## Support Boundary
 
 The public template can run as an explicit local demo, but production owner access fails closed. Do not use it with real renter data until the target database, selected auth mode, notifications, legal review, monitoring, and owner approval flows have deployment evidence.
+
+## Release review
+
+See [release evidence and channels](docs/release/README.md), [offline setup guide](docs/release/setup.html), [component contracts](docs/release/COMPONENTS.md), [rights metadata](release/rights.json) and [changelog](CHANGELOG.md). Packaging is a review candidate; publication requires separate approval.

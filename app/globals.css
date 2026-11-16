@@ -1451,3 +1451,11 @@ button:disabled {
     scroll-behavior: auto !important;
   }
 }
+
+/* Global portal navigation must reflow alongside the independent owner workspace. */
+@media (max-width: 760px) {
+  .nav { align-items: flex-start; flex-direction: column; gap: 12px; }
+  .nav-links { width: 100%; min-width: 0; }
+  .nav-links a, .nav-menu summary { min-height: 44px; }
+  .row { flex-wrap: wrap; }
+}
