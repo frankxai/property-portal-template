@@ -85,7 +85,7 @@ try {
   console.log("Auth endpoint ready; checking public pages and unauthenticated boundaries.");
 
   await expectStatus("/properties/urban-haven-sample", 200);
-  await expectStatus("/api/auth/sign-in/oauth2", 404, {
+  await expectStatus("/api/auth/sign-in/social", 404, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ providerId: "property-os-oidc", callbackURL: "/owner" })

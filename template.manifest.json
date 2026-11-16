@@ -1,0 +1,12 @@
+{
+  "id": "property-portal-template",
+  "name": "Property Portal Template",
+  "version": "0.3.0",
+  "license": "MIT",
+  "sourceRepository": "https://github.com/frankxai/property-portal-template",
+  "maturity": "release-candidate",
+  "verification": {
+    "production": "not_verified",
+    "marketplace": "not_submitted"
+  }
+}

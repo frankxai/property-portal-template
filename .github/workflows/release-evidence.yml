@@ -1,0 +1,45 @@
+name: Commercial release evidence
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-evidence-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Existing validation and package tests
+        run: npm run validate && npm run typecheck && npm run test:release
+      - run: npm run release:check
+      - run: npm run build
+      - run: npx --no-install playwright install --with-deps chromium
+      - name: Browser flows, accessibility and commercial captures
+        run: npx --no-install playwright test
+      - name: Export review packets and token projections
+        run: npm run tokens:export && npm run marketplace:export
+      - name: Package exact committed source
+        run: npm run package:release
+      - name: Upload review evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: release-evidence-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            test-results/
+            playwright-report/
+            dist/
+          if-no-files-found: error
+          retention-days: 7

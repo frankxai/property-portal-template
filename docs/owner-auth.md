@@ -25,7 +25,7 @@ Set `PROPERTY_OS_AUTH_MODE=static-private-pilot`, canonical public HTTPS `APP_BA
 
 ## Agency OIDC
 
-Agency mode uses Better Auth `1.6.23`, Authorization Code plus PKCE, RFC 9207 response-issuer validation, pinned authorization/token/JWKS endpoints, signed ID-token validation, PostgreSQL rate limits, and database sessions. ID tokens must pass signature, exact issuer, audience, authorized-party, algorithm, age, and expiry checks.
+Agency mode uses Better Auth `1.7.25`, Authorization Code plus PKCE, pinned authorization/token/JWKS endpoints, signed ID-token validation, PostgreSQL rate limits, and database sessions. ID tokens must pass signature, exact issuer, audience, authorized-party, algorithm, age, and expiry checks.
 
 Required configuration:
 
@@ -86,3 +86,9 @@ npm run identity:db:smoke
 `identity:smoke` proves the local policy, role matrix, signed-token negatives, and pinned migration contract. The database smokes require the target runtime database; set `PROPERTY_OS_EXPECTED_OIDC_SUBJECTS` to the reviewed comma-separated subjects. Production promotion additionally requires one real IdP callback, sign-out, denied foreign member, revoked member, and session-expiry test in the Vercel preview.
 
 The local verifier is implemented and tested. A real provider callback and deployed Postgres/RLS proof remain deployment evidence, not template claims.
+
+## Better Auth 1.7 migration
+
+The patched 1.7.25 runtime uses `signIn.social({ provider })` and `/api/auth/callback/:providerId`. Re-register the callback in the real IdP before any production promotion. `genericOAuthClient`, `issuer` and `requireIssuerValidation` are removed in 1.7; the application still verifies the signed ID token against its exact pinned issuer, audience and JWKS URL in `verifiedOidcUser` before checking pre-bound membership. No discovery endpoint or broader network authority was added. The existing schema revision label identifies the SQL migration, not the installed package version. The schema contract runs against 1.7.25.
+
+Reference: https://better-auth.com/docs/1.6/guides/1-7-upgrade-guide

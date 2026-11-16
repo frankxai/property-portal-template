@@ -12,3 +12,8 @@ test-results/
 portal-*.png
 .next-start.*.log
 tsconfig.tsbuildinfo
+
+dist/
+release-evidence/
+playwright-report/
+test-results/
