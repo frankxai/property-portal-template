@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
   "sourceRepository": "frankxai/creator-launch-os",
-  "sourceRevision": "f733e82aa57a3635b94277c400c1aad817a8ecfc",
+  "sourceRevision": "fa6747672a0ec32c08b6908cf354fc7bfc905a97",
   "policy": "Vendored portable adapters from existing Creator Launch release owner. Changes must be reviewed there and projected here; do not create another registry.",
   "files": [
     {
@@ -14,7 +14,7 @@
     },
     {
       "path": "scripts/export-marketplace.mjs",
-      "sha256": "31727842d90cd8e391c41e689f974aa1c1a405695097c2a73b8d59fefad7a80d"
+      "sha256": "fc408029963369fa3668738eb7dee18dfac3e34276a1db765fd68eacc9eb50b4"
     },
     {
       "path": "scripts/check-release.mjs",

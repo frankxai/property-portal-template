@@ -4,8 +4,10 @@
   "promise": "A sample owner workspace and renter portal with explicit authentication and persistence boundaries.",
   "boundary": "Fictional sample portfolio. Real identity, database tenancy, property facts and media rights need install-level verification.",
   "demo": {
-    "state": "preview_required",
-    "url": null
+    "state": "protected_staging_review",
+    "url": "https://property-portal-template-review-b9s95138e.vercel.app/",
+    "production": "approval_required",
+    "verification": "Serving commit is recorded separately in the PR evidence; this reference is not a self-verification receipt."
   },
   "tokenSources": [
     {

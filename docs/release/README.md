@@ -38,3 +38,5 @@ Official requirements checked 2026-11-16: [Vercel](https://vercel.com/templates/
 - Real-provider identity/database tenant verification
 - Current-commit browser/visual approval
 - Owner publication approval
+
+After browser checks, channel exports copy the three captured PNGs and bind their dimensions, bytes, source revision and SHA-256. Stale or modified captures block export. Without a browser capture, the packet explicitly records `missing_browser_capture` and is incomplete. Protected staging references remain review URLs; their exact serving commit is recorded separately in PR evidence.
