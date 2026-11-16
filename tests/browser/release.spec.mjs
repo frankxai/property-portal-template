@@ -16,7 +16,9 @@ for(const width of [1280,390,320]) test(`release routes reflow and expose access
  const errors=[];page.on('pageerror',e=>errors.push(e.message));const receipt=[];
  for(const route of config.captureRoutes){
   const response=await page.goto(route,{waitUntil:'networkidle'});expect(response.status()).toBe(200);await settle(page);
-  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth+1)).toBe(true);
+  const reflow = await page.evaluate(()=>({viewport:innerWidth,width:document.documentElement.scrollWidth,overflow:[...document.querySelectorAll("body *")].filter(n=>{const r=n.getBoundingClientRect();return r.right>innerWidth+1 || r.left < -1;}).slice(0,15).map(n=>({tag:n.tagName,class:n.className,right:n.getBoundingClientRect().right,width:n.getBoundingClientRect().width}))}));
+  await info.attach("reflow-"+route,{body:JSON.stringify(reflow),contentType:"application/json"});
+  expect(reflow.width,JSON.stringify(reflow)).toBeLessThanOrEqual(reflow.viewport+1);
   const a11y=await new AxeBuilder({page}).withTags(['wcag2a','wcag2aa','wcag21aa']).analyze();
   await info.attach('a11y-'+route,{body:JSON.stringify(a11y,null,2),contentType:'application/json'});
   expect(a11y.violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))).toEqual([]);

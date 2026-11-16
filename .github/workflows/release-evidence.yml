@@ -22,7 +22,7 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Existing validation and package tests
-        run: npm run validate && npm run typecheck && npm run test:release
+        run: npm run validate && npm run typecheck && npm run identity:smoke && npm run test:release
       - run: npm run release:check
       - run: npm run build
       - run: npx --no-install playwright install --with-deps chromium

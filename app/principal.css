@@ -16,3 +16,11 @@
 .pw-mobile-save{display:none}
 @media(max-width:960px){.pw-mobile-save{display:grid;place-items:center;min-width:36px;min-height:36px;border:1px solid #344a57;border-radius:5px;background:#17262e;color:#b2d8cc}}
 @media(max-width:480px){.pw-data-strip,.pw-data-strip strong,.pw-data-strip button,.pw-metric small,.pw-fields label>span,.pw-evidence-item small,.pw-field-note,.pw-panel-foot{font-size:11px!important}.pw-metric small{line-height:1.65}.pw-data-strip{line-height:1.8}.pw-fields label>span{min-height:33px}.pw-metric>span,.pw-decision small,.pw-chart-caption,.pw-year-control,.pw-table-bottom,.pw-table-bottom button,.pw-asset-title small,.pw-form label,.pw-form p,.pw-inline-note{font-size:11px!important}.pw-heading>div>p:last-child{font-size:12px;line-height:1.8}.pw-heading .pw-button{font-size:11px!important}.pw-metric>strong{font-size:24px}.pw-decision strong{font-size:12px}.pw-panel h2{font-size:12px}.pw-data-strip button{margin-left:11px}.pw-topbar{height:51px}.pw-top-actions{gap:8px}.pw-topbar .pw-owner-link{font-size:10px}.pw-chart text{font-size:12px}.pw-table-bottom{gap:10px}.pw-sort select{font-size:10px}.pw-case-draft{font-size:12px}.pw-form input:not([type=checkbox]),.pw-form select,.pw-form textarea{font-size:16px}}
+
+/* Keep wide portfolio data inside its own scroll area on phones. */
+@media (max-width: 720px) {
+ .pw-overview-grid { grid-template-columns: minmax(0, 1fr); }
+ .pw-overview-grid > *, .pw-main > *, .pw-heading > * { min-width: 0; }
+ .pw-sidebar nav { max-width: 100%; }
+ .pw-footer { flex-wrap: wrap; gap: .5rem; }
+}
