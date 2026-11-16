@@ -24,7 +24,7 @@ Keep the existing calm CSS transitions. Neither Motion nor GSAP has a demonstrat
 
 The release browser workflow captures real pages at 1280×720, 600×600 and 390×844, plus full desktop/phone evidence. Each artifact has commit, path, viewport, SHA-256 and bytes. No screenshot is generated imagery. Sample labels remain visible. `release/rights.json` controls listing use.
 
-`playwright test --update-snapshots` creates candidate goldens for review. Commit approved goldens, then use `VISUAL_REGRESSION=1 npm exec playwright test` to compare without updating them. Without approved goldens the capture checks are useful evidence, not historical visual regression. CI reports this distinction and never auto-approves new images.
+CI decodes each of the six route/viewport captures to RGBA and compares dimensions plus pixel SHA-256 against `release/visual-baseline.json`. The reference records its source commit, browser run, viewport and computed fonts. Baselines were inspected from real passing captures; listing approval remains separate. Review changed captures before deliberately replacing these references. Optional conventional Playwright image goldens can also be enabled with `VISUAL_REGRESSION=1`.
 
 ## Channel exports
 

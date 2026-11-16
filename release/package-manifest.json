@@ -161,6 +161,7 @@
     "release/pipeline-origin.json",
     "release/pipeline.json",
     "release/rights.json",
+    "release/visual-baseline.json",
     "scripts/agent-dry-run.mjs",
     "scripts/auth-boundary-smoke.mjs",
     "scripts/better-auth-schema-config.ts",

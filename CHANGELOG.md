@@ -15,3 +15,5 @@ No product publication, pricing change or marketplace submission.
 - Bind real commercial screenshots to each channel packet; reject stale revisions, modified PNGs and mismatched dimensions.
 
 - Bind the absolutely positioned accessible table label to its scroll region, eliminating the measured 648px document overflow on phones.
+
+- Compare six inspected route/viewport pixel baselines and document actual component contracts.
