@@ -1459,3 +1459,5 @@ button:disabled {
   .nav-links a, .nav-menu summary { min-height: 44px; }
   .row { flex-wrap: wrap; }
 }
+/* Keep body clipping local instead of propagating it to the viewport scroller. */
+html { overflow-x: clip; }
